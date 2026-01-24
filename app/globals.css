@@ -2,9 +2,8 @@
 @import "tw-animate-css";
 
 @custom-variant dark (&:is(.dark *));
- 
+
 :root {
-  /* Shadcn/ui default light theme colors */
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);
   --card: oklch(1 0 0);
@@ -38,45 +37,9 @@
   --sidebar-accent-foreground: oklch(0.205 0 0);
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.708 0 0);
-
-  /* User's preserved colors (take precedence) */
-  --background: #0F0F0F;
-  --foreground: #FFFFFF;
-  --card: #1A1A1A;
-  --card-foreground: #FFFFFF;
-  --popover: #1A1A1A;
-  --popover-foreground: #FFFFFF;
-  --primary: #00D9FF;
-  --primary-foreground: #0F0F0F;
-  --secondary: #1A1A1A;
-  --secondary-foreground: #FFFFFF;
-  --muted: #333333;
-  --muted-foreground: #999999;
-  --accent: #FFB84D;
-  --accent-foreground: #0F0F0F;
-  --destructive: #FF5555;
-  --destructive-foreground: #FFFFFF;
-  --border: #2A2A2A;
-  --input: #1A1A1A;
-  --ring: #00D9FF;
-  --chart-1: #00D9FF;
-  --chart-2: #FFB84D;
-  --chart-3: #FF5555;
-  --chart-4: #4DFFB8;
-  --chart-5: #FF8FA3;
-  --radius: 0.625rem; /* Updated from 0.75rem to match shadcn/ui default, as it's not a color */
-  --sidebar: #0F0F0F;
-  --sidebar-foreground: #FFFFFF;
-  --sidebar-primary: #00D9FF;
-  --sidebar-primary-foreground: #0F0F0F;
-  --sidebar-accent: #FFB84D;
-  --sidebar-accent-foreground: #0F0F0F;
-  --sidebar-border: #2A2A2A;
-  --sidebar-ring: #00D9FF;
 }
 
 .dark {
-  /* Shadcn/ui default dark theme colors */
   --background: oklch(0.145 0 0);
   --foreground: oklch(0.985 0 0);
   --card: oklch(0.145 0 0);
@@ -109,8 +72,10 @@
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(0.269 0 0);
   --sidebar-ring: oklch(0.439 0 0);
+}
 
-  /* User's preserved colors (take precedence) */
+/* User's custom colors take precedence */
+@theme {
   --background: #0F0F0F;
   --foreground: #FFFFFF;
   --card: #1A1A1A;
@@ -135,19 +100,11 @@
   --chart-3: #FF5555;
   --chart-4: #4DFFB8;
   --chart-5: #FF8FA3;
-  --sidebar: #0F0F0F;
-  --sidebar-foreground: #FFFFFF;
-  --sidebar-primary: #00D9FF;
-  --sidebar-primary-foreground: #0F0F0F;
-  --sidebar-accent: #FFB84D;
-  --sidebar-accent-foreground: #0F0F0F;
-  --sidebar-border: #2A2A2A;
-  --sidebar-ring: #00D9FF;
+  --radius: 0.75rem;
 }
 
 @theme inline {
-  --font-sans: 'Geist', 'Geist Fallback'; /* Retained from existing */
-  --font-mono: 'Geist Mono', 'Geist Mono Fallback'; /* Retained from existing */
+  /* optional: --font-sans, --font-serif, --font-mono if they are applied in the layout.tsx */
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
