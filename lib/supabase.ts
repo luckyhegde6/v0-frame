@@ -1,12 +1,22 @@
-import { createClient } from '@supabase/supabase-js'
-
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
 const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
 
-// Initialize with fallback values if env vars are missing
-export const supabase = supabaseUrl && supabaseKey 
-  ? createClient(supabaseUrl, supabaseKey)
-  : null
+// Helper function to check if Supabase is properly configured
+export const isSupabaseAvailable = () => {
+  return !!(supabaseUrl && supabaseKey && supabaseUrl.startsWith('http'))
+}
 
-// Helper function to check if Supabase is available
-export const isSupabaseAvailable = () => supabaseUrl && supabaseKey
+// Only create client if both environment variables are properly set
+let supabaseInstance: any = null
+
+try {
+  if (isSupabaseAvailable()) {
+    const { createClient } = require('@supabase/supabase-js')
+    supabaseInstance = createClient(supabaseUrl, supabaseKey)
+  }
+} catch (error) {
+  // Silently fail - Supabase not available in this environment
+  supabaseInstance = null
+}
+
+export const supabase = supabaseInstance
