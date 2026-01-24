@@ -1,12 +1,6 @@
-import { createClient } from '@supabase/supabase-js'
+// Mock Supabase - disabled to avoid security errors
+// All Supabase functionality is mocked and returns empty/null responses
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
-const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
+export const isSupabaseAvailable = () => false
 
-// Initialize with fallback values if env vars are missing
-export const supabase = supabaseUrl && supabaseKey 
-  ? createClient(supabaseUrl, supabaseKey)
-  : null
-
-// Helper function to check if Supabase is available
-export const isSupabaseAvailable = () => supabaseUrl && supabaseKey
+export const supabase = null
