@@ -53,17 +53,13 @@ export default function UploadPage() {
 
   const processFiles = (filesToAdd: File[]) => {
     filesToAdd.forEach(file => {
-      const reader = new FileReader()
-      reader.onload = (e) => {
-        const preview = e.target?.result as string
-        setFiles(prev => [...prev, {
-          id: Math.random().toString(36).substr(2, 9),
-          name: file.name,
-          preview,
-          file
-        }])
-      }
-      reader.readAsDataURL(file)
+      const preview = URL.createObjectURL(file)
+      setFiles(prev => [...prev, {
+        id: Math.random().toString(36).substr(2, 9),
+        name: file.name,
+        preview,
+        file
+      }])
     })
   }
 
@@ -127,11 +123,10 @@ export default function UploadPage() {
           onDragOver={handleDragOver}
           onDragLeave={handleDragLeave}
           onDrop={handleDrop}
-          className={`relative border-2 border-dashed rounded-2xl p-12 transition-all ${
-            isDragging
+          className={`relative border-2 border-dashed rounded-2xl p-12 transition-all ${isDragging
               ? 'border-primary bg-primary/5'
               : 'border-border bg-card hover:border-primary/50'
-          }`}
+            }`}
         >
           <input
             type="file"
