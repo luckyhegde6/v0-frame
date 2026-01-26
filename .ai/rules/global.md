@@ -26,15 +26,15 @@ These are the non-negotiable principles that all AI agents must follow when cont
    - Preserve byte-for-byte accuracy
    - All optimizations on derived copies
 
-5. **Cloud Storage Is Ephemeral and Disposable**
-   - Temporary storage only
-   - Can be deleted at any time
-   - No durable data in cloud
+5. **Authoritative Filesystem + PostgreSQL**
+   - The server's local storage and database are the single source of truth.
+   - No external systems (cloud) are assumed for durable persistence.
+   - Filesystem integrity must be verified against DB checksums.
 
-6. **Home Server Is the Canonical Source of Truth**
-   - Original images stored on home server
-   - Home server is authoritative
-   - Cloud is just a frontend
+6. **Home Server is the Single Runtime**
+   - UI, API, and Background Jobs all run in the same Unified Node.js environment.
+   - No serverless/edge-split for heavy logic.
+   - System design must account for long-lived processes.
 
 7. **Failures Are Expected and Must Be Handled Explicitly**
    - Network failures

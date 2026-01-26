@@ -1,4 +1,4 @@
-# Photo management system
+# FRAME - Self-Hosted Photo Management System
 
 *Automatically synced with your [v0.app](https://v0.app) deployments*
 
@@ -33,52 +33,40 @@ App - [https://framev6.vercel.app/](https://framev6.vercel.app/)
 
 ----
 
-# FRAME — A Hybrid Photo Management System
+# FRAME — Self-Hosted Photo Management
 ``` mermaid
-UPLOADED
-↓
-INGESTED (temp cloud storage)
-↓
-STORED (home server confirmed)
-↓
-PROCESSING (ML pipeline)
-↓
-PROCESSED
+graph TD
+    UPLOADED[UPLOADED] --> INGESTED[INGESTED]
+    INGESTED --> PROCESSING[PROCESSING]
+    PROCESSING --> PROCESSED[PROCESSED]
+    ANY --> FAILED[FAILED]
 ```
-Failures are expected and recoverable.
-No step assumes perfect infrastructure.
+Failures are expected and recoverable. The home server is the single system of record.
 
 ## Architecture
 
 ``` mermaid
 flowchart LR
-    User[User Upload] -->|Next.js| Cloud[Cloud Storage]
-    Cloud -->|Offload Job| Home[Home Server]
-    Home -->|Confirm| Cloud
-    Cloud -->|Derived Assets| Cloud
-    Home -->|ML Pipeline| Home
-    Home -->|Vectors| DB[(pgvector)]
-    Cloud -->|Search API| User
-    Home -->|Originals| User
+    User[User Upload] -->|Next.js| Server[Home Server]
+    Server -->|API/UI| Node[Node.js Runtime]
+    Node -->|Jobs| Runner[Job Runner]
+    Runner -->|Write| Disk[(/frame-data/)]
+    Runner -->|Index| DB[(PostgreSQL)]
 ```
 
 ## Key Design Decisions
-### Lossless Originals
-Original images are preserved byte-for-byte.
-All optimizations happen on derived copies.
+### Single Source of Truth
+There is no serverless split-brain. The home server (Next.js in Node runtime) acts as the UI, API, and background job execution layer.
 
-### Asynchronous by Default
-Uploads, storage, ML, and downloads are decoupled.
-No user request blocks on heavy work.
+### Lossless Originals
+Original images are preserved byte-for-byte in `/frame-data/images/{id}/original`. All optimizations happen on derived copies.
+
+### Long-lived Job Runner
+A persistent job runner loop executes within the Next.js runtime, picking up tasks from the database.
 
 ### Streaming Everywhere
-- Uploads are streamed
-- Downloads are streamed
-- ZIP archives are streamed
-No buffering large files in memory.
-
-### Explicit Failure Handling
-Retries, backoff, and idempotency are first-class concepts.
+- Uploads and downloads are streamed directly to/from the filesystem.
+- No buffering large files in memory.
 
 ---
 
@@ -86,15 +74,14 @@ Retries, backoff, and idempotency are first-class concepts.
 
 - UI scaffold complete
 - Upload and gallery UX validated
-- Deployment pipeline live
-
-The system is currently in **Phase 1: Ingestion Foundation**.
+- **Phase 1: Ingestion Foundation** is complete.
+- **Phase 2: Job Runner** implementation is next.
 
 ---
 
 ## Roadmap
 
-See `TODO.md` for the authoritative execution plan.
+See [TODO.md](./TODO.md) for the authoritative execution plan.
 
 ---
 
@@ -121,11 +108,11 @@ npm run dev
 
 ## 🤖 AI Agent System
 
-This project uses a standardized [**.ai/**](file:///f:/Local_git/v0-frame/.ai/) directory for AI agent configuration, rules, and workflows.
+This project uses a standardized [**.ai/**](./.ai/) directory for AI agent configuration, rules, and workflows.
 
 If you are an AI assistant working on this repo:
-1. **Read the rules** in [.ai/rules/](file:///f:/Local_git/v0-frame/.ai/rules/)
-2. **Follow the contracts** in [.ai/contracts/](file:///f:/Local_git/v0-frame/.ai/contracts/)
-3. **Use the appropriate agent** definition from [.ai/agents/](file:///f:/Local_git/v0-frame/.ai/agents/)
+1. **Read the rules** in [.ai/rules/](./.ai/rules/)
+2. **Follow the contracts** in [.ai/contracts/](./.ai/contracts/)
+3. **Use the appropriate agent** definition from [.ai/agents/](./.ai/agents/)
 
-See [.ai/README.md](file:///f:/Local_git/v0-frame/.ai/README.md) for more details.
+See [.ai/README.md](./.ai/README.md) for more details.

@@ -11,7 +11,7 @@
         "enabled": true,
         "defaultModel": "claude-3.5-sonnet",
         "agents": [
-            "create", 
+            "create",
             "optimize",
             "debug",
             "refactor",
@@ -39,7 +39,8 @@
             "security",
             "testing",
             "git-workflow",
-            "v0-vercel"
+            "v0-vercel",
+            "architecture"
         ]
     },
     "hooks": {
