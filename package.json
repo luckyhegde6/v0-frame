@@ -3,7 +3,8 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "build": "next build",
+    "postinstall": "prisma generate",
+    "build": "pnpm db:generate && next build",
     "dev": "next dev",
     "lint": "eslint .",
     "start": "next start",
@@ -11,8 +12,10 @@
     "docker:down": "docker-compose down",
     "db:push": "prisma db push",
     "db:generate": "prisma generate",
+    "db:seed": "prisma db seed",
     "db:studio": "prisma studio",
-    "dev:local": "npm run docker:up && npm run db:push && npm run dev"
+    "docker:clean": "docker-compose down -v --remove-orphans",
+    "local": "pnpm docker:up && pnpm db:push && pnpm db:seed && pnpm dev"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",

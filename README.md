@@ -100,8 +100,10 @@ Feature velocity is secondary by design.
 ## Running Locally
 
 ```bash
-npm install
-npm run dev
+pnpm install
+pnpm local
+
+pnpm dev # for vercel
 ```
 
 ---
