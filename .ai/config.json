@@ -1,0 +1,76 @@
+{
+    "version": "1.0.0",
+    "project": {
+        "name": "FRAME Photo Management System",
+        "description": "Hybrid cloud/home-server photo management platform",
+        "type": "hybrid-cloud-home-server",
+        "phase": 1,
+        "repository": "luckyhegde6/v0-frame"
+    },
+    "agents": {
+        "enabled": true,
+        "defaultModel": "claude-3.5-sonnet",
+        "agents": [
+            "create", 
+            "optimize",
+            "debug",
+            "refactor",
+            "maintain",
+            "architect",
+            "security-reviewer",
+            "test-engineer"
+        ]
+    },
+    "skills": {
+        "enabled": true,
+        "autoLoad": [
+            "coding-standards/typescript",
+            "coding-standards/react-nextjs",
+            "domain-knowledge/image-lifecycle",
+            "workflows/feature-implementation"
+        ]
+    },
+    "rules": {
+        "enforced": true,
+        "rules": [
+            "global",
+            "lifecycle",
+            "coding-style",
+            "security",
+            "testing",
+            "git-workflow",
+            "v0-vercel"
+        ]
+    },
+    "hooks": {
+        "enabled": true,
+        "configFile": "hooks/hooks.json"
+    },
+    "mcp": {
+        "enabled": true,
+        "configFile": "mcp/mcp-config.json"
+    },
+    "contracts": {
+        "enabled": true,
+        "phase1": "contracts/phase-1-ingestion.md",
+        "enforced": true
+    },
+    "environments": {
+        "supported": [
+            "antigravity",
+            "windsurf",
+            "claude-code",
+            "cursor",
+            "copilot"
+        ],
+        "primary": "antigravity"
+    },
+    "scripts": {
+        "init": "node .ai/scripts/setup/init-ai-env.js",
+        "migrate": "node .ai/scripts/setup/migrate-from-agentic.js",
+        "validate": "node .ai/scripts/validation/validate-config.js",
+        "validate-agents": "node .ai/scripts/validation/validate-agents.js",
+        "validate-lifecycle": "node .ai/scripts/validation/validate-lifecycle.js",
+        "health-check": "node .ai/scripts/maintenance/health-check.js"
+    }
+}

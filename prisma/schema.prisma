@@ -1,0 +1,51 @@
+// This schema conforms to Phase 1 Ingestion Contracts
+// See: .ai/contracts/phase-1-ingestion.md
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Phase 1: Image Ingestion Foundation
+model Image {
+  id        String      @id @default(cuid())
+  status    ImageStatus
+  
+  // Phase 1: Required for ingestion
+  tempPath  String      // Absolute path to temp file
+  checksum  String      @unique // SHA-256 hash
+  mimeType  String
+  width     Int
+  height    Int
+  sizeBytes Int
+  
+  // Timestamps
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+  
+  @@index([status])
+  @@index([checksum])
+  @@index([createdAt])
+}
+
+// Phase 1 Legal States Only
+enum ImageStatus {
+  UPLOADED   // Client finished sending bytes
+  INGESTED   // Temp file written + metadata stored
+  FAILED     // Unrecoverable ingestion error
+  // STORED, PROCESSING, PROCESSED are strictly forbidden in Phase 1
+}
+
+// Job queue for Phase 2 offloading (stub for Phase 1)
+model Job {
+  id        String   @id @default(cuid())
+  type      String
+  payload   String   // JSON payload
+  status    String   // PENDING, COMPLETED, FAILED
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}

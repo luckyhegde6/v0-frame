@@ -116,3 +116,16 @@ Feature velocity is secondary by design.
 npm install
 npm run dev
 ```
+
+---
+
+## 🤖 AI Agent System
+
+This project uses a standardized [**.ai/**](file:///f:/Local_git/v0-frame/.ai/) directory for AI agent configuration, rules, and workflows.
+
+If you are an AI assistant working on this repo:
+1. **Read the rules** in [.ai/rules/](file:///f:/Local_git/v0-frame/.ai/rules/)
+2. **Follow the contracts** in [.ai/contracts/](file:///f:/Local_git/v0-frame/.ai/contracts/)
+3. **Use the appropriate agent** definition from [.ai/agents/](file:///f:/Local_git/v0-frame/.ai/agents/)
+
+See [.ai/README.md](file:///f:/Local_git/v0-frame/.ai/README.md) for more details.

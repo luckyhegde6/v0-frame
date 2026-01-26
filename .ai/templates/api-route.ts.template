@@ -1,0 +1,33 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { z } from 'zod';
+import prisma from '@/lib/prisma';
+import { AppError, handleApiError } from '@/lib/utils/error';
+
+// Define Validation Schema
+const {{RESOURCE}}_SCHEMA = z.object({
+  // define schema here
+});
+
+export async function GET(request: NextRequest) {
+  try {
+    const data = await prisma.{{MODEL}}.findMany();
+    return NextResponse.json(data);
+  } catch (error) {
+    return handleApiError(error);
+  }
+}
+
+export async function POST(request: NextRequest) {
+  try {
+    const body = await request.json();
+    const validated = {{RESOURCE}}_SCHEMA.parse(body);
+    
+    const result = await prisma.{{MODEL}}.create({
+      data: validated
+    });
+    
+    return NextResponse.json(result, { status: 201 });
+  } catch (error) {
+    return handleApiError(error);
+  }
+}

@@ -1,0 +1,20 @@
+{
+    "hooks": [
+        {
+            "event": "post-edit",
+            "script": "post-edit.js",
+            "description": "Runs validation after a file is edited"
+        },
+        {
+            "event": "pre-commit",
+            "script": "pre-commit.js",
+            "description": "Lints and validates before commit"
+        },
+        {
+            "event": "session-start",
+            "script": "session-start.js",
+            "description": "Initializes session environment"
+        }
+    ],
+    "enabled": true
+}

@@ -1,0 +1,21 @@
+import prisma from '@/lib/prisma';
+
+export class {{NAME}}Service {
+  /**
+   * Describes the method purpose
+   */
+  async get{{NAME}}(id: string) {
+    return prisma.{{MODEL}}.findUnique({
+      where: { id }
+    });
+  }
+
+  /**
+   * Creates a new {{NAME}}
+   */
+  async create{{NAME}}(data: any) {
+    return prisma.{{MODEL}}.create({
+      data
+    });
+  }
+}

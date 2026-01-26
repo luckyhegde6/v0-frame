@@ -19,8 +19,9 @@ Status: ✅ COMPLETE
 - [x] Image detail modal
 - [x] Vercel deployment
 - [x] Basic metadata display (size, format, dimensions)
+- [x] Standardized AI configuration ([.ai/](file:///f:/Local_git/v0-frame/.ai/))
 
-This phase validates UX direction and deployment pipeline.
+This phase validates UX direction, deployment pipeline, and AI autonomy foundation.
 
 ---
 
@@ -28,27 +29,41 @@ This phase validates UX direction and deployment pipeline.
 
 Status: ⏳ IN PROGRESS
 
+> [!IMPORTANT]
+> **All Phase 1 work must comply with the authoritative Phase 1 Ingestion Contracts.**  
+> See: [`.ai/contracts/phase-1-ingestion.md`](file:///.ai/contracts/phase-1-ingestion.md)
+
 ### Goals
 Establish a correct, explicit image lifecycle.
 No ML. No optimizations. No shortcuts.
 
 ### Tasks
-- [ ] Define ImageStatus enum (UPLOADED → INGESTED → STORED → PROCESSED)
-- [ ] Introduce Prisma schema for Image records
-- [ ] Implement temporary file storage on server (ephemeral)
-- [ ] Refactor `/api/upload` to:
-  - accept streams
-  - save to temp
-  - create DB record
-  - enqueue offload job
-- [ ] Add checksum calculation (SHA-256)
-- [ ] Ensure temp files are NOT treated as durable
+- [x] **Review Phase 1 Ingestion Contracts** (`.ai/contracts/phase-1-ingestion.md`)
+- [x] Define ImageStatus enum (UPLOADED → INGESTED → FAILED only)
+- [x] Introduce Prisma schema for Image records (per contract §5)
+- [x] Implement temporary file storage on server (per contract §3)
+- [x] Refactor `/api/upload` to contract-compliant implementation:
+  - [x] accept streams (no buffering)
+  - [x] save to temp storage (deterministic naming)
+  - [x] create DB record (status: INGESTED)
+  - [x] enqueue offload job (fire-and-forget)
+  - [x] **comply with Upload API Contract (§2)**
+- [x] Add checksum calculation (SHA-256, per contract §4)
+- [x] Extract basic metadata only (6 fields per contract §4)
+- [x] Implement job enqueue stub (per contract §6)
+- [x] Implement error handling (per contract §7)
+- [x] Add logging (per contract §9)
+- [x] Ensure temp files are NOT treated as durable
+- [ ] **Validate implementation against contract checklist (§13)** (Requires running code)
 
 ### Non-goals
 - No face detection
 - No object detection
 - No pgvector
 - No thumbnails yet
+- No home server storage (Phase 2)
+- No compression (Phase 3)
+- No ML (Phase 4)
 
 ---
 
@@ -124,8 +139,10 @@ Status: ⏳ PENDING
 ### Tasks
 - [ ] Idempotency keys for jobs
 - [ ] Dead-letter queue
-- [ ] Disk pressure handling
+- [ ] Disk pressure handling (Vercel `/tmp` limits)
 - [ ] Observability (logs, metrics)
+- [ ] Vercel Serverless Function optimizations (timeouts, memory)
+- [ ] v0 Sync verification (ensure manually added logic isn't broken by UI updates)
 - [ ] README + architecture docs polish
 
 ---

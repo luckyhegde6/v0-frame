@@ -1,0 +1,12 @@
+describe('{{NAME}}', () => {
+  it('should behave as expected', () => {
+    // Arrange
+    const input = 'test';
+    
+    // Act
+    const result = {{NAME}}(input);
+    
+    // Assert
+    expect(result).toBeDefined();
+  });
+});

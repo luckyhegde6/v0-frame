@@ -1,0 +1,13 @@
+import { cn } from "@/lib/utils";
+
+interface {{NAME}}Props extends React.HTMLAttributes<HTMLDivElement> {
+  // define props
+}
+
+export function {{NAME}}({ className, ...props }: {{NAME}}Props) {
+  return (
+    <div className={cn("", className)} {...props}>
+      {/* component content */}
+    </div>
+  );
+}
