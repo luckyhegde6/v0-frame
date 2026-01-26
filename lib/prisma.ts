@@ -2,7 +2,12 @@ import { Pool } from 'pg'
 import { PrismaPg } from '@prisma/adapter-pg'
 import { PrismaClient } from '@prisma/client'
 
-const connectionString = `${process.env.DATABASE_URL}`
+// Use POSTGRES_PRISMA_URL (Supabase) if available, fallback to DATABASE_URL (local)
+const connectionString = process.env.POSTGRES_PRISMA_URL || process.env.DATABASE_URL
+
+if (!connectionString) {
+  throw new Error('DATABASE_URL or POSTGRES_PRISMA_URL environment variable is not set')
+}
 
 const pool = new Pool({ connectionString })
 const adapter = new PrismaPg(pool)
