@@ -51,6 +51,7 @@
     "@supabase/supabase-js": "2.91.1",
     "@vercel/analytics": "^1.3.1",
     "autoprefixer": "^10.4.20",
+    "bufferutil": "latest",
     "better-sqlite3": "latest",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
@@ -75,6 +76,7 @@
     "sonner": "^1.7.4",
     "tailwind-merge": "^3.3.1",
     "tailwindcss-animate": "^1.0.7",
+    "utf-8-validate": "latest",
     "ws": "latest",
     "vaul": "^1.1.2",
     "zod": "3.25.76"
@@ -89,5 +91,8 @@
     "tailwindcss": "^4.1.9",
     "tw-animate-css": "1.3.3",
     "typescript": "^5"
-  }
+  },
+  "trustedDependencies": [
+    "pg-native"
+  ]
 }

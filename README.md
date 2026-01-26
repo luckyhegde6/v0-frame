@@ -106,6 +106,29 @@ pnpm local
 pnpm dev # for vercel
 ```
 
+create an env file with below or copy from here or from Keep
+
+```
+POSTGRES_URL
+POSTGRES_PRISMA_URL
+POSTGRES_URL_NON_POOLING
+POSTGRES_USER
+POSTGRES_HOST
+POSTGRES_PASSWORD
+POSTGRES_DATABASE
+SUPABASE_SERVICE_ROLE_KEY
+SUPABASE_ANON_KEY
+SUPABASE_URL
+SUPABASE_JWT_SECRET
+NEXT_PUBLIC_SUPABASE_ANON_KEY
+NEXT_PUBLIC_SUPABASE_URL
+```
+
+```bash
+DATABASE_URL="postgresql://postgres:postgres@localhost:5432/frame?schema=public"
+POSTGRES_PRISMA_URL="postgresql://postgres:postgres@localhost:5432/frame?schema=public"
+POSTGRES_URL_NON_POOLING="postgresql://postgres:postgres@localhost:5432/frame?schema=public"
+```
 ---
 
 ## 🤖 AI Agent System
