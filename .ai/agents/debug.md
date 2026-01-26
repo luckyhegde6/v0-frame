@@ -273,7 +273,7 @@ When debugging an issue, provide:
 
 ### Database Queries
 
-```sql
+\`\`\`sql
 -- Check image states
 SELECT status, COUNT(*) FROM images GROUP BY status;
 
@@ -286,11 +286,11 @@ AND updated_at < NOW() - INTERVAL '1 hour';
 SELECT * FROM images 
 WHERE status = 'UPLOADED' 
 AND created_at < NOW() - INTERVAL '24 hours';
-```
+\`\`\`
 
 ### File System Checks
 
-```bash
+\`\`\`bash
 # Check temp storage usage
 du -sh /tmp/uploads
 
@@ -299,11 +299,11 @@ find /tmp/uploads -mtime +1 -type f
 
 # Verify checksums
 sha256sum /path/to/file
-```
+\`\`\`
 
 ### Log Analysis
 
-```bash
+\`\`\`bash
 # Search for errors
 grep -i error /var/log/app.log
 
@@ -312,7 +312,7 @@ grep "image_id:123" /var/log/app.log
 
 # Check job failures
 grep "job:failed" /var/log/jobs.log
-```
+\`\`\`
 
 ## Anti-Patterns to Avoid
 

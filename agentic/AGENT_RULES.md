@@ -30,7 +30,7 @@ No agent is allowed to violate these principles.
 
 Every image MUST conform to the lifecycle below:
 
-```
+\`\`\`
 UPLOADED
 ↓
 INGESTED (temporary cloud storage)
@@ -40,7 +40,7 @@ STORED (home server confirmed)
 PROCESSING (background pipeline)
 ↓
 PROCESSED
-```
+\`\`\`
 
 Rules:
 - Agents may NOT skip states

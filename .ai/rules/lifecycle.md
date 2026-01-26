@@ -4,7 +4,7 @@ Every image in the FRAME system MUST conform to the lifecycle defined below. The
 
 ## Lifecycle States
 
-```
+\`\`\`
 UPLOADED
 ↓
 INGESTED (temporary cloud storage)
@@ -14,7 +14,7 @@ STORED (home server confirmed)
 PROCESSING (background pipeline)
 ↓
 PROCESSED
-```
+\`\`\`
 
 ## State Definitions
 
@@ -59,33 +59,33 @@ PROCESSED
 ### Rule 1: No State Skipping
 
 ❌ **Forbidden**:
-```typescript
+\`\`\`typescript
 // Skip from UPLOADED to STORED
 await updateImageStatus(imageId, 'STORED');
-```
+\`\`\`
 
 ✅ **Required**:
-```typescript
+\`\`\`typescript
 // Transition through all states
 await updateImageStatus(imageId, 'INGESTED');
 // ... later ...
 await updateImageStatus(imageId, 'STORED');
-```
+\`\`\`
 
 ### Rule 2: No State Merging
 
 ❌ **Forbidden**:
-```typescript
+\`\`\`typescript
 // Combine INGESTED and STORED
 async function uploadAndStore(file) {
   await saveToTemp(file);
   await saveToHomeServer(file); // ❌ Synchronous!
   await updateStatus('STORED'); // ❌ Skipped INGESTED!
 }
-```
+\`\`\`
 
 ✅ **Required**:
-```typescript
+\`\`\`typescript
 // Separate states with async boundaries
 async function ingest(file) {
   await saveToTemp(file);
@@ -97,14 +97,14 @@ async function offloadWorker(fileId) {
   await saveToHomeServer(fileId);
   await updateStatus('STORED');
 }
-```
+\`\`\`
 
 ### Rule 3: Preserve Idempotency
 
 All state transitions must be idempotent (safe to retry).
 
 ✅ **Idempotent**:
-```typescript
+\`\`\`typescript
 async function transitionToStored(imageId: string) {
   const image = await prisma.image.findUnique({ where: { id: imageId } });
   
@@ -123,14 +123,14 @@ async function transitionToStored(imageId: string) {
     data: { status: 'STORED', storedAt: new Date() }
   });
 }
-```
+\`\`\`
 
 ### Rule 4: Handle Retries Safely
 
 Failed operations must be retryable without data corruption.
 
 ✅ **Safe Retry**:
-```typescript
+\`\`\`typescript
 async function offloadToHomeServer(imageId: string) {
   const image = await getImage(imageId);
   
@@ -151,7 +151,7 @@ async function offloadToHomeServer(imageId: string) {
   
   await updateStatus(imageId, 'STORED');
 }
-```
+\`\`\`
 
 ## State Transition Matrix
 
@@ -172,7 +172,7 @@ async function offloadToHomeServer(imageId: string) {
 
 ### Enforce Transitions
 
-```typescript
+\`\`\`typescript
 class ImageLifecycle {
   private static validTransitions: Record<ImageStatus, ImageStatus[]> = {
     UPLOADED: ['INGESTED', 'FAILED'],
@@ -208,13 +208,13 @@ class ImageLifecycle {
     });
   }
 }
-```
+\`\`\`
 
 ## Audit Trail
 
 All state transitions must be logged for debugging and compliance.
 
-```typescript
+\`\`\`typescript
 await prisma.imageStatusHistory.create({
   data: {
     imageId,
@@ -224,13 +224,13 @@ await prisma.imageStatusHistory.create({
     triggeredBy: 'system' // or userId
   }
 });
-```
+\`\`\`
 
 ## Monitoring
 
 Track images in each state:
 
-```sql
+\`\`\`sql
 -- Images by status
 SELECT status, COUNT(*) 
 FROM images 
@@ -245,7 +245,7 @@ AND updated_at < NOW() - INTERVAL '1 hour';
 SELECT * FROM images
 WHERE status = 'FAILED'
 ORDER BY updated_at DESC;
-```
+\`\`\`
 
 ## Recovery Procedures
 
@@ -268,7 +268,7 @@ ORDER BY updated_at DESC;
 
 ### Complete Upload Flow
 
-```typescript
+\`\`\`typescript
 // 1. UPLOADED → INGESTED
 async function handleUpload(file: File) {
   // Save to temp
@@ -331,7 +331,7 @@ async function processWorker(imageId: string) {
     throw error;
   }
 }
-```
+\`\`\`
 
 ---
 

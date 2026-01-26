@@ -47,7 +47,7 @@ Phase 2 establishes:
 
 ## Canonical Image Lifecycle (Phase 2 Extension)
 
-```
+\`\`\`
 UPLOADED   → File received, bytes transferred
 INGESTED   → Temp file written + metadata stored
 FAILED     → Unrecoverable ingestion error
@@ -55,7 +55,7 @@ STORED     → Original file stored in cloud
 THUMBNAIL  → Thumbnail generated
 PREVIEW    → Preview generated
 PROCESSED  → All processing complete
-```
+\`\`\`
 
 - INGESTED → PROCESSING → STORED
 - FAILED → INGESTED (retry)
@@ -67,7 +67,7 @@ PROCESSED  → All processing complete
 ---
 
 ## Job Model Contract
-```ts
+\`\`\`ts
 interface Job {
   id: string;
   type: string;
@@ -81,7 +81,7 @@ interface Job {
   createdAt: Date;
   updatedAt: Date;
 }
-```
+\`\`\`
 
 ## Rules:
 
@@ -127,10 +127,10 @@ interface Job {
 ## Admin Job Inspection (Read-Only)
 
 Allowed endpoints:
-```
+\`\`\`
 GET /admin/jobs
 GET /admin/jobs/:id
-```
+\`\`\`
 
 Forbidden:
 

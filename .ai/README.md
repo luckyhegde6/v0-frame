@@ -24,7 +24,7 @@ When you initialize in this project:
 
 ## 📂 Directory Structure
 
-```
+\`\`\`
 .ai/
 ├── config.json                 # Main configuration
 ├── README.md                   # This file
@@ -46,7 +46,7 @@ When you initialize in this project:
 ├── templates/                  # Code and file boilerplates
 ├── scripts/                    # Automation and validation scripts
 └── examples/                   # Real-world usage examples
-```
+\`\`\`
 
 ---
 
@@ -158,7 +158,7 @@ Rules are the "Non-Negotiables" of the project.
 ## 🏗️ Architecture
 
 ### AI System Flow
-```mermaid
+\`\`\`mermaid
 graph TB
     AI[AI Agent] --> Config[config.json]
     AI --> Rules[rules/]
@@ -170,10 +170,10 @@ graph TB
     Hooks[hooks/] --> Scripts[scripts/]
     MCP[mcp/] --> External[External Services]
     Contexts[contexts/] --> AI
-```
+\`\`\`
 
 ### Image Lifecycle (Source of Truth)
-```mermaid
+\`\`\`mermaid
 graph TD
     UPLOADED --> INGESTED
     INGESTED --> STORED
@@ -181,7 +181,7 @@ graph TD
     PROCESSING --> PROCESSED
     ANY --> FAILED
     FAILED --> UPLOADED
-```
+\`\`\`
 
 ---
 

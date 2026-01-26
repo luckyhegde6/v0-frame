@@ -12,9 +12,9 @@ This document provides concrete examples of common workflows.
     -   Create server action `toggleLike(imageId)`.
     -   Update `ImageCard` component.
 2.  **DB**:
-    ```bash
+    \`\`\`bash
     npx prisma migrate dev --name add_likes
-    ```
+    \`\`\`
 3.  **Code**:
     -   `lib/actions.ts`: Implement `toggleLike`.
     -   `components/ImageCard.tsx`: Add button, call action.

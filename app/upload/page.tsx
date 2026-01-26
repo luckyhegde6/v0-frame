@@ -53,17 +53,13 @@ export default function UploadPage() {
 
   const processFiles = (filesToAdd: File[]) => {
     filesToAdd.forEach(file => {
-      const reader = new FileReader()
-      reader.onload = (e) => {
-        const preview = e.target?.result as string
-        setFiles(prev => [...prev, {
-          id: Math.random().toString(36).substr(2, 9),
-          name: file.name,
-          preview,
-          file
-        }])
-      }
-      reader.readAsDataURL(file)
+      const preview = URL.createObjectURL(file)
+      setFiles(prev => [...prev, {
+        id: Math.random().toString(36).substr(2, 9),
+        name: file.name,
+        preview,
+        file
+      }])
     })
   }
 

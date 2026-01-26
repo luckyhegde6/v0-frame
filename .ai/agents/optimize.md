@@ -91,7 +91,7 @@ The FRAME system handles:
 - Release resources promptly
 
 **Example**:
-```typescript
+\`\`\`typescript
 // ❌ Bad: Buffers entire file in memory
 const buffer = await fs.readFile(path);
 res.send(buffer);
@@ -99,7 +99,7 @@ res.send(buffer);
 // ✅ Good: Streams file
 const stream = fs.createReadStream(path);
 stream.pipe(res);
-```
+\`\`\`
 
 ### 2. Streaming Efficiency
 
@@ -115,7 +115,7 @@ stream.pipe(res);
 - Pipeline operations
 
 **Example**:
-```typescript
+\`\`\`typescript
 // ✅ Proper streaming with backpressure
 import { pipeline } from 'stream/promises';
 
@@ -124,7 +124,7 @@ await pipeline(
   transformStream,
   destinationStream
 );
-```
+\`\`\`
 
 ### 3. Database Query Patterns
 
@@ -140,7 +140,7 @@ await pipeline(
 - Avoid N+1 queries
 
 **Example**:
-```typescript
+\`\`\`typescript
 // ❌ Bad: N+1 query
 const images = await prisma.image.findMany();
 for (const image of images) {
@@ -151,7 +151,7 @@ for (const image of images) {
 const images = await prisma.image.findMany({
   include: { user: true }
 });
-```
+\`\`\`
 
 ### 4. Thumbnail and Asset Loading
 
@@ -168,7 +168,7 @@ const images = await prisma.image.findMany({
 - Add image placeholders
 
 **Example**:
-```typescript
+\`\`\`typescript
 // ✅ Lazy loading with pagination
 const images = await prisma.image.findMany({
   take: 20,
@@ -179,7 +179,7 @@ const images = await prisma.image.findMany({
     // Don't load full image data
   }
 });
-```
+\`\`\`
 
 ### 5. Background Job Throughput
 
@@ -195,7 +195,7 @@ const images = await prisma.image.findMany({
 - Resource pooling
 
 **Example**:
-```typescript
+\`\`\`typescript
 // ✅ Parallel processing with concurrency limit
 import pLimit from 'p-limit';
 
@@ -204,7 +204,7 @@ const promises = images.map(img =>
   limit(() => processImage(img))
 );
 await Promise.all(promises);
-```
+\`\`\`
 
 ## Optimization Process
 

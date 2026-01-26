@@ -9,14 +9,14 @@ These rules define the technical implementation standards for the FRAME self-hos
 
 ## Filesystem Layout
 All image data must be stored using the following deterministic layout:
-```
+\`\`\`
 /frame-data/
   images/
     {imageId}/
       original      # Immutable original byte-stream
       preview       # Optimized web preview
       thumbnails/   # Various scaled thumbnails
-```
+\`\`\`
 
 ## Background Job System
 1. **Persistence**: Jobs must be persisted in the `Job` table before execution.

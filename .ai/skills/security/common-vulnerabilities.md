@@ -17,7 +17,7 @@
 ## 4. Broken Access Control
 - "Insecure Direct Object References" (IDOR): Always verify the user owns the object ID being requested.
 
-```typescript
+\`\`\`typescript
 // ❌ Bad
 await db.image.delete({ where: { id } });
 
@@ -25,4 +25,4 @@ await db.image.delete({ where: { id } });
 await db.image.delete({
   where: { id, userId: currentUser.id }
 });
-```
+\`\`\`
