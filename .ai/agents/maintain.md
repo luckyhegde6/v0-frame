@@ -75,14 +75,14 @@ The FRAME project is:
 - Are the links working?
 
 **Example Updates**:
-```markdown
+\`\`\`markdown
 ## Current Status
 
 - ✅ UI scaffold complete
 - ✅ Upload and gallery UX validated
 - ✅ Vercel deployment
 - ⏳ Phase 1: Image Ingestion Foundation (IN PROGRESS)
-```
+\`\`\`
 
 ### 2. Architecture Documentation
 
@@ -93,7 +93,7 @@ The FRAME project is:
 - Failure modes
 
 **Format**:
-```markdown
+\`\`\`markdown
 ## Architecture
 
 ### Components
@@ -107,7 +107,7 @@ The FRAME project is:
 3. Background job offloads to home server
 4. Home server confirms storage
 5. Cloud deletes temp file
-```
+\`\`\`
 
 ### 3. TODO Audits
 
@@ -118,7 +118,7 @@ The FRAME project is:
 - Are priorities correct?
 
 **Cleanup**:
-```markdown
+\`\`\`markdown
 # Before
 - [ ] Add upload endpoint (vague)
 
@@ -128,7 +128,7 @@ The FRAME project is:
   - [x] Stream to temp storage
   - [x] Create DB record
   - [x] Enqueue offload job
-```
+\`\`\`
 
 ### 4. Dead Code Detection
 
@@ -139,7 +139,7 @@ The FRAME project is:
 - Obsolete files
 
 **How to Find**:
-```bash
+\`\`\`bash
 # Find unused exports
 npx ts-prune
 
@@ -148,7 +148,7 @@ grep -r "TODO" --include="*.ts" --include="*.tsx"
 
 # Find commented code
 grep -r "^[[:space:]]*//.*=.*(" --include="*.ts"
-```
+\`\`\`
 
 **What to Do**:
 - Remove unused code
@@ -179,7 +179,7 @@ grep -r "^[[:space:]]*//.*=.*(" --include="*.ts"
 - Document dependency choices
 
 **Commands**:
-```bash
+\`\`\`bash
 # Check for outdated packages
 npm outdated
 
@@ -191,7 +191,7 @@ npm update
 
 # Remove unused
 npm prune
-```
+\`\`\`
 
 ### 7. Documentation Improvements
 

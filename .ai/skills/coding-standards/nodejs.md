@@ -26,39 +26,39 @@ This guide defines the coding standards for Node.js backend code in the FRAME pr
 ### Promisification
 Use `util.promisify` or `fs/promises` instead of callback-based APIs.
 
-```typescript
+\`\`\`typescript
 // ❌ Bad
 fs.readFile('file.txt', (err, data) => { ... });
 
 // ✅ Good
 import fs from 'fs/promises';
 const data = await fs.readFile('file.txt');
-```
+\`\`\`
 
 ### Concurrent Execution
 Use `Promise.all` for independent operations, but be mindful of concurrency limits.
 
-```typescript
+\`\`\`typescript
 // ✅ Good: Parallel fetch
 const [user, posts] = await Promise.all([
   fetchUser(id),
   fetchPosts(id)
 ]);
-```
+\`\`\`
 
 ## Error Handling
 
 ### Custom Errors
 Define application-specific error classes for better handling.
 
-```typescript
+\`\`\`typescript
 export class DatabaseError extends Error {
   constructor(message: string, public cause?: unknown) {
     super(message);
     this.name = 'DatabaseError';
   }
 }
-```
+\`\`\`
 
 ### Global Handlers
 Ensure unhandled rejections and uncaught exceptions are logged before exit.
@@ -68,11 +68,11 @@ Ensure unhandled rejections and uncaught exceptions are logged before exit.
 ### Optimization
 Always use streams for file processing to keep memory footprint low (See `optimization.md`).
 
-```typescript
+\`\`\`typescript
 // ✅ Good: Pipe streams
 import { pipeline } from 'stream/promises';
 await pipeline(readStream, transform, writeStream);
-```
+\`\`\`
 
 ### Cleanup
 Ensure file handles and resources are closed in `finally` blocks or using `using` (Stage 3 proposal / TS 5.2+).
@@ -83,10 +83,10 @@ Ensure file handles and resources are closed in `finally` blocks or using `using
 - Structured logging format: `[Context] Message { details }`.
 - Do not log sensitive data (passwords, tokens).
 
-```typescript
+\`\`\`typescript
 console.log('[JobQueue] Processing job', { jobId: job.id });
 console.error('[JobQueue] Failed job', { jobId: job.id, error: err.message });
-```
+\`\`\`
 
 ## Scripts
 

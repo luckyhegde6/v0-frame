@@ -8,7 +8,7 @@ Every image in FRAME follows an explicit, enforced lifecycle from upload to fina
 
 ## Complete Lifecycle
 
-```
+\`\`\`
 UPLOADED
 ↓
 INGESTED (temporary cloud storage)
@@ -18,12 +18,12 @@ STORED (home server confirmed)
 PROCESSING (background pipeline)
 ↓
 PROCESSED
-```
+\`\`\`
 
 At any point, an image may transition to:
-```
+\`\`\`
 FAILED → UPLOADED (retry from beginning)
-```
+\`\`\`
 
 ## Phase-Specific States
 
@@ -116,7 +116,7 @@ FAILED → UPLOADED (retry from beginning)
 
 ### Validation
 
-```typescript
+\`\`\`typescript
 // Complete lifecycle transitions
 const LIFECYCLE_TRANSITIONS: Record<ImageStatus, ImageStatus[]> = {
   UPLOADED: ['INGESTED', 'FAILED'],
@@ -136,13 +136,13 @@ function validateTransition(from: ImageStatus, to: ImageStatus): void {
     );
   }
 }
-```
+\`\`\`
 
 ## Lifecycle Implementation
 
 ### Database Schema
 
-```prisma
+\`\`\`prisma
 model Image {
   id        String      @id @default(cuid())
   status    ImageStatus // Enum
@@ -181,11 +181,11 @@ enum ImageStatus {
   PROCESSED
   FAILED
 }
-```
+\`\`\`
 
 ### State Transition Function
 
-```typescript
+\`\`\`typescript
 class ImageLifecycle {
   static async transition(
     imageId: string,
@@ -222,7 +222,7 @@ class ImageLifecycle {
     console.log(`[Lifecycle] ${image.id}: ${image.status} → ${toStatus}`);
   }
 }
-```
+\`\`\`
 
 ## Failure Handling
 
@@ -251,7 +251,7 @@ class ImageLifecycle {
 ### Recovery Procedures
 
 #### Automatic Retry
-```typescript
+\`\`\`typescript
 async function retryFailedImage(imageId: string): Promise<void> {
   const image = await prisma.image.findUnique({
     where: { id: imageId },
@@ -267,10 +267,10 @@ async function retryFailedImage(imageId: string): Promise<void> {
   // Re-enqueue upload job
   await enqueueUploadJob(imageId);
 }
-```
+\`\`\`
 
 #### Manual Investigation
-```sql
+\`\`\`sql
 -- Find failed images
 SELECT * FROM images
 WHERE status = 'FAILED'
@@ -283,29 +283,29 @@ SELECT
 FROM images
 WHERE status = 'FAILED'
 GROUP BY DATE(failedAt);
-```
+\`\`\`
 
 ## Monitoring
 
 ### Key Metrics
 
 1. **State Distribution**
-   ```sql
+   \`\`\`sql
    SELECT status, COUNT(*) as count
    FROM images
    GROUP BY status;
-   ```
+   \`\`\`
 
 2. **Stuck Images**
-   ```sql
+   \`\`\`sql
    -- Images stuck in PROCESSING > 1 hour
    SELECT * FROM images
    WHERE status = 'PROCESSING'
    AND processingAt < NOW() - INTERVAL '1 hour';
-   ```
+   \`\`\`
 
 3. **Failure Rate**
-   ```sql
+   \`\`\`sql
    -- Failure rate by day
    SELECT 
      DATE(createdAt) as date,
@@ -315,13 +315,13 @@ GROUP BY DATE(failedAt);
    FROM images
    GROUP BY DATE(createdAt)
    ORDER BY date DESC;
-   ```
+   \`\`\`
 
 ## Audit Trail
 
 ### Status History
 
-```prisma
+\`\`\`prisma
 model ImageStatusHistory {
   id        String   @id @default(cuid())
   imageId   String
@@ -335,11 +335,11 @@ model ImageStatusHistory {
   @@index([imageId])
   @@index([timestamp])
 }
-```
+\`\`\`
 
 ### Logging Transitions
 
-```typescript
+\`\`\`typescript
 async function logStatusTransition(
   imageId: string,
   fromStatus: ImageStatus,
@@ -355,7 +355,7 @@ async function logStatusTransition(
     },
   });
 }
-```
+\`\`\`
 
 ## Best Practices
 

@@ -58,11 +58,11 @@ The following are **FORBIDDEN** in Phase 1:
 
 Only the following states are legal in Phase 1:
 
-```
+\`\`\`
 UPLOADED   → File received, bytes transferred
 INGESTED   → Temp file written + metadata stored
 FAILED     → Unrecoverable ingestion error
-```
+\`\`\`
 
 ### State Transition Rules
 
@@ -93,7 +93,7 @@ FAILED     → Unrecoverable ingestion error
 
 ### Transition Validation
 
-```typescript
+\`\`\`typescript
 // MANDATORY: Validate all transitions
 const PHASE_1_TRANSITIONS: Record<ImageStatus, ImageStatus[]> = {
   UPLOADED: ['INGESTED', 'FAILED'],
@@ -110,7 +110,7 @@ function validateTransition(from: ImageStatus, to: ImageStatus): void {
     );
   }
 }
-```
+\`\`\`
 
 ---
 
@@ -118,9 +118,9 @@ function validateTransition(from: ImageStatus, to: ImageStatus): void {
 
 ### Endpoint
 
-```
+\`\`\`
 POST /api/upload
-```
+\`\`\`
 
 ### Responsibilities (MANDATORY)
 
@@ -154,18 +154,18 @@ The upload handler **MUST NOT**:
 
 ### Request Format
 
-```typescript
+\`\`\`typescript
 // Multipart form data
 Content-Type: multipart/form-data
 
 {
   file: File // Single image file
 }
-```
+\`\`\`
 
 ### Response Format
 
-```typescript
+\`\`\`typescript
 // Success (201 Created)
 {
   imageId: string;      // Unique identifier
@@ -180,11 +180,11 @@ Content-Type: multipart/form-data
   error: string;        // Human-readable error
   code: string;         // Machine-readable error code
 }
-```
+\`\`\`
 
 ### Implementation Template
 
-```typescript
+\`\`\`typescript
 export async function POST(request: Request) {
   try {
     // 1. Accept streamed upload
@@ -237,7 +237,7 @@ export async function POST(request: Request) {
     return handleUploadError(error);
   }
 }
-```
+\`\`\`
 
 ---
 
@@ -272,9 +272,9 @@ Temporary storage is:
 
 ### Naming Convention (MANDATORY)
 
-```
+\`\`\`
 /tmp/ingest/{imageId}.{ext}
-```
+\`\`\`
 
 **Rules**:
 - No randomness
@@ -283,14 +283,14 @@ Temporary storage is:
 - Deterministic from imageId
 
 **Example**:
-```
+\`\`\`
 /tmp/ingest/img_2026-01-25_abc123.jpg
 /tmp/ingest/img_2026-01-25_def456.png
-```
+\`\`\`
 
 ### Cleanup Policy
 
-```typescript
+\`\`\`typescript
 // TTL: 24 hours after creation
 const TEMP_FILE_TTL = 24 * 60 * 60 * 1000; // 24 hours
 
@@ -299,7 +299,7 @@ setInterval(async () => {
   const cutoff = Date.now() - TEMP_FILE_TTL;
   await cleanupTempFiles(cutoff);
 }, 60 * 60 * 1000);
-```
+\`\`\`
 
 ---
 
@@ -332,7 +332,7 @@ Only the following metadata may be extracted in Phase 1:
 
 ### Extraction Implementation
 
-```typescript
+\`\`\`typescript
 interface BasicMetadata {
   mimeType: string;
   width: number;
@@ -352,7 +352,7 @@ async function extractBasicMetadata(filePath: string): Promise<BasicMetadata> {
     sizeBytes: (await fs.stat(filePath)).size,
   };
 }
-```
+\`\`\`
 
 ---
 
@@ -360,7 +360,7 @@ async function extractBasicMetadata(filePath: string): Promise<BasicMetadata> {
 
 ### Image Record MUST Contain
 
-```typescript
+\`\`\`typescript
 interface ImageRecord {
   id: string;              // Unique identifier
   status: 'INGESTED';      // Always INGESTED in Phase 1
@@ -373,7 +373,7 @@ interface ImageRecord {
   createdAt: Date;         // Upload timestamp
   updatedAt: Date;         // Last update timestamp
 }
-```
+\`\`\`
 
 ### Rules
 
@@ -394,7 +394,7 @@ interface ImageRecord {
 
 ### Prisma Schema (Phase 1)
 
-```prisma
+\`\`\`prisma
 model Image {
   id        String   @id @default(cuid())
   status    String   // "INGESTED" or "FAILED"
@@ -411,7 +411,7 @@ model Image {
   @@index([checksum])
   @@index([createdAt])
 }
-```
+\`\`\`
 
 ---
 
@@ -419,14 +419,14 @@ model Image {
 
 ### Job Type (Phase 1 Only)
 
-```typescript
+\`\`\`typescript
 type OffloadJob = {
   type: 'OFFLOAD_ORIGINAL';
   imageId: string;
   tempPath: string;
   checksum: string;
 };
-```
+\`\`\`
 
 ### Rules
 
@@ -444,7 +444,7 @@ type OffloadJob = {
 
 ### Implementation Stub
 
-```typescript
+\`\`\`typescript
 // Phase 1: Enqueue only
 async function enqueueOffloadJob(job: OffloadJob): Promise<void> {
   // TODO: Implement actual queue in Phase 2
@@ -460,7 +460,7 @@ async function enqueueOffloadJob(job: OffloadJob): Promise<void> {
     },
   });
 }
-```
+\`\`\`
 
 ---
 
@@ -480,7 +480,7 @@ async function enqueueOffloadJob(job: OffloadJob): Promise<void> {
 
 ### Error Response Format
 
-```typescript
+\`\`\`typescript
 interface ErrorResponse {
   error: string;        // Human-readable message
   code: string;         // Machine-readable code
@@ -497,11 +497,11 @@ const ERROR_CODES = {
   DATABASE_ERROR: 'DATABASE_ERROR',
   JOB_ENQUEUE_ERROR: 'JOB_ENQUEUE_ERROR',
 } as const;
-```
+\`\`\`
 
 ### Error Handling Implementation
 
-```typescript
+\`\`\`typescript
 async function handleUploadError(error: unknown): Promise<Response> {
   // Log error
   console.error('[Upload Error]', error);
@@ -527,7 +527,7 @@ async function handleUploadError(error: unknown): Promise<Response> {
   
   return Response.json({ error: message, code }, { status });
 }
-```
+\`\`\`
 
 ---
 
@@ -549,7 +549,7 @@ async function handleUploadError(error: unknown): Promise<Response> {
 - Must check DB state before acting
 - Use checksum for deduplication
 
-```typescript
+\`\`\`typescript
 // Job must be idempotent
 async function processOffloadJob(job: OffloadJob): Promise<void> {
   // Check if already processed
@@ -564,7 +564,7 @@ async function processOffloadJob(job: OffloadJob): Promise<void> {
   
   // Process job...
 }
-```
+\`\`\`
 
 **Agents must not blur these semantics.**
 
@@ -584,7 +584,7 @@ Each upload MUST log:
 
 ### Log Format
 
-```typescript
+\`\`\`typescript
 console.log('[Upload]', {
   imageId,
   tempPath,
@@ -594,7 +594,7 @@ console.log('[Upload]', {
   durationMs,
   timestamp: new Date().toISOString(),
 });
-```
+\`\`\`
 
 **No structured logging yet — just consistency.**
 
@@ -654,37 +654,37 @@ Before accepting agent output, verify:
 
 Every agent prompt must include:
 
-```
+\`\`\`
 All output must comply with Phase 1 Ingestion Contracts.
 See: .ai/contracts/phase-1-ingestion.md
-```
+\`\`\`
 
 ### In Code Reviews
 
 Every code review must verify:
 
-```
+\`\`\`
 Does this code comply with Phase 1 Ingestion Contracts?
 Reference: .ai/contracts/phase-1-ingestion.md
-```
+\`\`\`
 
 ### In TODO.md
 
 Phase 1 tasks must reference:
 
-```
+\`\`\`
 - [ ] Implement upload API per Phase 1 Ingestion Contracts
       See: .ai/contracts/phase-1-ingestion.md
-```
+\`\`\`
 
 ### In AGENT_RULES.md
 
 Add reference:
 
-```
+\`\`\`
 Phase 1 work must comply with:
 .ai/contracts/phase-1-ingestion.md
-```
+\`\`\`
 
 ---
 
@@ -735,7 +735,7 @@ This contract may only be changed:
 
 ## Appendix A: Complete Type Definitions
 
-```typescript
+\`\`\`typescript
 // Image statuses (Phase 1 only)
 type ImageStatus = 'UPLOADED' | 'INGESTED' | 'FAILED';
 
@@ -776,7 +776,7 @@ interface ErrorResponse {
   code: string;
   details?: unknown;
 }
-```
+\`\`\`
 
 ---
 

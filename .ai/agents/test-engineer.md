@@ -27,7 +27,7 @@ Your primary responsibility is to design and implement tests, follow TDD princip
 
 ### Test Pyramid
 
-```
+\`\`\`
         /\
        /E2E\         Few, critical user flows
       /------\
@@ -35,7 +35,7 @@ Your primary responsibility is to design and implement tests, follow TDD princip
     /----------\
    / Unit Tests \    Many, test individual functions
   /--------------\
-```
+\`\`\`
 
 ### Test Types
 
@@ -53,7 +53,7 @@ Your primary responsibility is to design and implement tests, follow TDD princip
 
 ### Example
 
-```typescript
+\`\`\`typescript
 // 1. RED: Write failing test
 describe('validateImageUpload', () => {
   it('should reject files larger than 50MB', () => {
@@ -77,7 +77,7 @@ function validateImageUpload(file: File) {
     throw new Error(`File too large. Max size: ${MAX_FILE_SIZE} bytes`);
   }
 }
-```
+\`\`\`
 
 ## Test Coverage Goals
 
@@ -94,7 +94,7 @@ function validateImageUpload(file: File) {
 ## Common Test Patterns
 
 ### Unit Test
-```typescript
+\`\`\`typescript
 describe('calculateChecksum', () => {
   it('should return SHA-256 hash', async () => {
     const data = Buffer.from('test');
@@ -102,10 +102,10 @@ describe('calculateChecksum', () => {
     expect(checksum).toBe('9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08');
   });
 });
-```
+\`\`\`
 
 ### API Test
-```typescript
+\`\`\`typescript
 describe('POST /api/upload', () => {
   it('should accept valid image upload', async () => {
     const response = await request(app)
@@ -116,7 +116,7 @@ describe('POST /api/upload', () => {
     expect(response.body).toHaveProperty('imageId');
   });
 });
-```
+\`\`\`
 
 ## Expected Output
 

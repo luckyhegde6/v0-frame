@@ -22,7 +22,7 @@ This guide defines the coding standards for React and Next.js development in the
 - Use `lib/` services for data access, not API routes (when calling from Server Components).
 - Use API routes only for Client Components data fetching or external integrations.
 
-```typescript
+\`\`\`typescript
 // ✅ Good: Server Component Fetching
 import { getImages } from '@/lib/images';
 
@@ -30,7 +30,7 @@ export default async function GalleryPage() {
   const images = await getImages();
   return <Gallery images={images} />;
 }
-```
+\`\`\`
 
 ### Route Handlers
 - Use standard HTTP methods (`GET`, `POST`, etc.).
@@ -42,12 +42,12 @@ export default async function GalleryPage() {
 ### Functional Components
 Always use functional components with named exports.
 
-```typescript
+\`\`\`typescript
 // ✅ Good
 export function Button({ children }: ButtonProps) {
   return <button>{children}</button>;
 }
-```
+\`\`\`
 
 ### Hooks Rules
 - Only call hooks at the top level.
@@ -71,13 +71,13 @@ Classes should be logically ordered (layout -> box model -> typography -> visual
 ### `cn` Utility
 Use the `cn` (clsx + tailwind-merge) utility for conditional class merging.
 
-```typescript
+\`\`\`typescript
 import { cn } from '@/lib/utils';
 
 export function Card({ className, ...props }: CardProps) {
   return <div className={cn("rounded-lg border bg-card", className)} {...props} />;
 }
-```
+\`\`\`
 
 ## Performance
 

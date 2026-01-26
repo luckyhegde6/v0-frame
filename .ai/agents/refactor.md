@@ -79,7 +79,7 @@ This codebase:
 **Goal**: Organize code by domain, not by technical layer
 
 **Before** (flat structure):
-```
+\`\`\`
 app/
   api/
     upload.ts
@@ -88,10 +88,10 @@ app/
 lib/
   utils.ts
   helpers.ts
-```
+\`\`\`
 
 **After** (domain structure):
-```
+\`\`\`
 app/
   api/
     images/
@@ -104,14 +104,14 @@ lib/
     storage-service.ts
   search/
     search-service.ts
-```
+\`\`\`
 
 ### 2. Reduced Duplication
 
 **Goal**: Extract common patterns without over-abstracting
 
 **Before**:
-```typescript
+\`\`\`typescript
 // Duplicated validation in multiple routes
 export async function POST(req: Request) {
   const body = await req.json();
@@ -119,10 +119,10 @@ export async function POST(req: Request) {
   if (!body.email) throw new Error('Email required');
   // ...
 }
-```
+\`\`\`
 
 **After**:
-```typescript
+\`\`\`typescript
 // Shared validation utility
 import { validateRequest } from '@/lib/validation';
 
@@ -130,37 +130,37 @@ export async function POST(req: Request) {
   const body = await validateRequest(req, uploadSchema);
   // ...
 }
-```
+\`\`\`
 
 ### 3. Improved Readability
 
 **Goal**: Make code self-documenting
 
 **Before**:
-```typescript
+\`\`\`typescript
 const x = await db.img.findMany({ where: { s: 'p' } });
-```
+\`\`\`
 
 **After**:
-```typescript
+\`\`\`typescript
 const processingImages = await prisma.image.findMany({
   where: { status: 'PROCESSING' }
 });
-```
+\`\`\`
 
 ### 4. Explicit Contracts
 
 **Goal**: Clear types and interfaces
 
 **Before**:
-```typescript
+\`\`\`typescript
 function processImage(data: any) {
   // ...
 }
-```
+\`\`\`
 
 **After**:
-```typescript
+\`\`\`typescript
 interface ImageProcessingInput {
   imageId: string;
   operations: ImageOperation[];
@@ -169,7 +169,7 @@ interface ImageProcessingInput {
 function processImage(input: ImageProcessingInput): Promise<ProcessedImage> {
   // ...
 }
-```
+\`\`\`
 
 ## Refactoring Process
 
@@ -244,31 +244,31 @@ function processImage(input: ImageProcessingInput): Promise<ProcessedImage> {
 **When**: Function is too long or doing multiple things
 
 **Before**:
-```typescript
+\`\`\`typescript
 async function handleUpload(req: Request) {
   // Validate (10 lines)
   // Save file (15 lines)
   // Create DB record (10 lines)
   // Enqueue job (5 lines)
 }
-```
+\`\`\`
 
 **After**:
-```typescript
+\`\`\`typescript
 async function handleUpload(req: Request) {
   const validatedData = await validateUploadRequest(req);
   const filePath = await saveUploadedFile(validatedData);
   const image = await createImageRecord(filePath, validatedData);
   await enqueueOffloadJob(image.id);
 }
-```
+\`\`\`
 
 ### Extract Service
 
 **When**: Business logic is mixed with API routes
 
 **Before**:
-```typescript
+\`\`\`typescript
 // app/api/images/route.ts
 export async function GET(req: Request) {
   const images = await prisma.image.findMany({
@@ -277,10 +277,10 @@ export async function GET(req: Request) {
   });
   return Response.json(images);
 }
-```
+\`\`\`
 
 **After**:
-```typescript
+\`\`\`typescript
 // lib/images/image-service.ts
 export class ImageService {
   async getUserImages(userId: string) {
@@ -297,42 +297,42 @@ export async function GET(req: Request) {
   const images = await imageService.getUserImages(req.user.id);
   return Response.json(images);
 }
-```
+\`\`\`
 
 ### Rename for Clarity
 
 **When**: Names are unclear or misleading
 
 **Before**:
-```typescript
+\`\`\`typescript
 const x = await getData();
 const temp = process(x);
 const result = temp.map(t => t.val);
-```
+\`\`\`
 
 **After**:
-```typescript
+\`\`\`typescript
 const images = await fetchUserImages();
 const processedImages = processImageMetadata(images);
 const thumbnailUrls = processedImages.map(img => img.thumbnailUrl);
-```
+\`\`\`
 
 ### Introduce Type
 
 **When**: Using `any` or unclear types
 
 **Before**:
-```typescript
+\`\`\`typescript
 function transform(data: any): any {
   return data.map((item: any) => ({
     id: item.id,
     url: item.url
   }));
 }
-```
+\`\`\`
 
 **After**:
-```typescript
+\`\`\`typescript
 interface Image {
   id: string;
   url: string;
@@ -350,7 +350,7 @@ function transform(images: Image[]): ImageSummary[] {
     url: image.url
   }));
 }
-```
+\`\`\`
 
 ## Expected Output
 
@@ -379,14 +379,14 @@ When refactoring, provide:
 ### 3. Updated File Structure (if changed)
 
 **Old Structure**:
-```
+\`\`\`
 lib/
   utils.ts
   helpers.ts
-```
+\`\`\`
 
 **New Structure**:
-```
+\`\`\`
 lib/
   images/
     image-utils.ts
@@ -394,7 +394,7 @@ lib/
   validation/
     schemas.ts
     validators.ts
-```
+\`\`\`
 
 ### 4. Code Changes
 
