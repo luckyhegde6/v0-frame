@@ -3,6 +3,9 @@ ignoredBuiltDependencies:
   - libpq
 
 onlyBuiltDependencies:
+  - '@prisma/engines'
   - bufferutil
   - prisma
+  - protobufjs
+  - sharp
   - utf-8-validate

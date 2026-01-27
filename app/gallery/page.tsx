@@ -1,8 +1,8 @@
 'use client'
 
 import Link from 'next/link'
-import { useState, useMemo } from 'react'
-import { Upload, Grid, List } from 'lucide-react'
+import { useState, useMemo, useEffect } from 'react'
+import { Upload, Grid, List, Loader2 } from 'lucide-react'
 import { GallerySearch } from '@/components/gallery-search'
 import { CollectionManager } from '@/components/collection-manager'
 import { ImageCard } from '@/components/image-card'
@@ -12,59 +12,10 @@ interface GalleryImage {
   src: string
   title: string
   uploaded: string
+  size?: string
+  dimensions?: string
+  mimeType?: string
 }
-
-// Mock gallery data - using SVG data URLs
-const mockImages: GalleryImage[] = [
-  {
-    id: '1',
-    src: 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="500" height="500"%3E%3Crect fill="%234a5568" width="500" height="500"/%3E%3Ctext x="50%25" y="50%25" dominantBaseline="middle" textAnchor="middle" fontFamily="sans-serif" fontSize="32" fill="%23ffffff"%3EMountain Vista%3C/text%3E%3C/svg%3E',
-    title: 'Mountain Vista',
-    uploaded: '2 days ago',
-  },
-  {
-    id: '2',
-    src: 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="500" height="500"%3E%3Crect fill="%232d3748" width="500" height="500"/%3E%3Ctext x="50%25" y="50%25" dominantBaseline="middle" textAnchor="middle" fontFamily="sans-serif" fontSize="32" fill="%23ffffff"%3EUrban Landscape%3C/text%3E%3C/svg%3E',
-    title: 'Urban Landscape',
-    uploaded: '1 week ago',
-  },
-  {
-    id: '3',
-    src: 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="500" height="500"%3E%3Crect fill="%23704214" width="500" height="500"/%3E%3Ctext x="50%25" y="50%25" dominantBaseline="middle" textAnchor="middle" fontFamily="sans-serif" fontSize="32" fill="%23ffffff"%3EGolden Hour%3C/text%3E%3C/svg%3E',
-    title: 'Golden Hour',
-    uploaded: '2 weeks ago',
-  },
-  {
-    id: '4',
-    src: 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="500" height="500"%3E%3Crect fill="%23276749" width="500" height="500"/%3E%3Ctext x="50%25" y="50%25" dominantBaseline="middle" textAnchor="middle" fontFamily="sans-serif" fontSize="32" fill="%23ffffff"%3EForest Path%3C/text%3E%3C/svg%3E',
-    title: 'Forest Path',
-    uploaded: '3 weeks ago',
-  },
-  {
-    id: '5',
-    src: 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="500" height="500"%3E%3Crect fill="%23234e52" width="500" height="500"/%3E%3Ctext x="50%25" y="50%25" dominantBaseline="middle" textAnchor="middle" fontFamily="sans-serif" fontSize="32" fill="%23ffffff"%3EBeach Sunset%3C/text%3E%3C/svg%3E',
-    title: 'Beach Sunset',
-    uploaded: '1 month ago',
-  },
-  {
-    id: '6',
-    src: 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="500" height="500"%3E%3Crect fill="%235a4a7f" width="500" height="500"/%3E%3Ctext x="50%25" y="50%25" dominantBaseline="middle" textAnchor="middle" fontFamily="sans-serif" fontSize="32" fill="%23ffffff"%3EAlpine Peak%3C/text%3E%3C/svg%3E',
-    title: 'Alpine Peak',
-    uploaded: '1 month ago',
-  },
-  {
-    id: '7',
-    src: 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="500" height="500"%3E%3Crect fill="%231a202c" width="500" height="500"/%3E%3Ctext x="50%25" y="50%25" dominantBaseline="middle" textAnchor="middle" fontFamily="sans-serif" fontSize="32" fill="%23ffffff"%3ENight Sky%3C/text%3E%3C/svg%3E',
-    title: 'Night Sky',
-    uploaded: '2 months ago',
-  },
-  {
-    id: '8',
-    src: 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="500" height="500"%3E%3Crect fill="%234c5282" width="500" height="500"/%3E%3Ctext x="50%25" y="50%25" dominantBaseline="middle" textAnchor="middle" fontFamily="sans-serif" fontSize="32" fill="%23ffffff"%3EPortrait Study%3C/text%3E%3C/svg%3E',
-    title: 'Portrait Study',
-    uploaded: '2 months ago',
-  },
-]
 
 export default function GalleryPage() {
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
@@ -72,14 +23,48 @@ export default function GalleryPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [filter, setFilter] = useState<'all' | 'recent' | 'favorites'>('all')
   const [selectedCollection, setSelectedCollection] = useState<string | null>(null)
-  const [collections, setCollections] = useState([
-    { id: '1', name: 'Landscapes', count: 3 },
-    { id: '2', name: 'Portraits', count: 2 },
-    { id: '3', name: 'Travel', count: 3 },
-  ])
+  const [images, setImages] = useState<GalleryImage[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [collections, setCollections] = useState<{ id: string; name: string; count: number }[]>([])
+
+  useEffect(() => {
+    const fetchGalleryData = async () => {
+      try {
+        const response = await fetch('/api/images')
+        const result = await response.json()
+
+        if (result.data) {
+          const mappedImages = result.data.map((img: any) => ({
+            id: img.id,
+            src: `/api/images/${img.id}`,
+            title: img.title || 'Untitled Image',
+            uploaded: new Date(img.createdAt).toLocaleDateString(),
+            size: (img.sizeBytes / 1024 / 1024).toFixed(2) + ' MB',
+            dimensions: `${img.width} × ${img.height}`,
+            mimeType: img.mimeType.split('/')[1].toUpperCase(),
+            collectionId: img.collectionId
+          }))
+          setImages(mappedImages)
+        }
+
+        if (result.collections) {
+          setCollections(result.collections)
+        }
+      } catch (error) {
+        console.error('Failed to fetch gallery data:', error)
+      } finally {
+        setIsLoading(false)
+      }
+    }
+    fetchGalleryData()
+  }, [])
 
   const filteredImages = useMemo(() => {
-    let result = mockImages
+    let result = images
+
+    if (selectedCollection) {
+      result = result.filter(img => (img as any).collectionId === selectedCollection)
+    }
 
     if (searchQuery) {
       result = result.filter(img =>
@@ -88,13 +73,13 @@ export default function GalleryPage() {
     }
 
     if (filter === 'recent') {
-      result = result.slice(0, 4)
+      result = [...result].sort((a, b) => b.id.localeCompare(a.id)).slice(0, 4)
     }
 
     return result
-  }, [searchQuery, filter])
+  }, [images, searchQuery, filter, selectedCollection])
 
-  const selectedImage = selectedId ? mockImages.find(img => img.id === selectedId) : null
+  const selectedImage = selectedId ? images.find(img => img.id === selectedId) : null
 
   return (
     <div className="min-h-screen bg-background">
@@ -107,22 +92,20 @@ export default function GalleryPage() {
           <div className="flex items-center gap-2 bg-card border border-border rounded-lg p-1">
             <button
               onClick={() => setViewMode('grid')}
-              className={`p-2 rounded transition-colors ${
-                viewMode === 'grid'
-                  ? 'bg-primary/20 text-primary'
-                  : 'text-foreground/60 hover:text-foreground'
-              }`}
+              className={`p-2 rounded transition-colors ${viewMode === 'grid'
+                ? 'bg-primary/20 text-primary'
+                : 'text-foreground/60 hover:text-foreground'
+                }`}
               title="Grid view"
             >
               <Grid size={20} />
             </button>
             <button
               onClick={() => setViewMode('list')}
-              className={`p-2 rounded transition-colors ${
-                viewMode === 'list'
-                  ? 'bg-primary/20 text-primary'
-                  : 'text-foreground/60 hover:text-foreground'
-              }`}
+              className={`p-2 rounded transition-colors ${viewMode === 'list'
+                ? 'bg-primary/20 text-primary'
+                : 'text-foreground/60 hover:text-foreground'
+                }`}
               title="List view"
             >
               <List size={20} />
@@ -154,7 +137,14 @@ export default function GalleryPage() {
             <div className="mb-8">
               <h1 className="text-4xl font-bold mb-2">Your Gallery</h1>
               <p className="text-lg text-foreground/60">
-                {filteredImages.length} {filteredImages.length === 1 ? 'image' : 'images'} · Click to view details
+                {isLoading ? (
+                  <span className="flex items-center gap-2">
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Loading images...
+                  </span>
+                ) : (
+                  `${filteredImages.length} ${filteredImages.length === 1 ? 'image' : 'images'} · Click to view details`
+                )}
               </p>
             </div>
 
@@ -168,7 +158,11 @@ export default function GalleryPage() {
             {/* Grid View */}
             {viewMode === 'grid' && (
               <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                {filteredImages.length > 0 ? (
+                {isLoading ? (
+                  Array.from({ length: 6 }).map((_, i) => (
+                    <div key={i} className="aspect-square bg-card animate-pulse rounded-lg border border-border" />
+                  ))
+                ) : filteredImages.length > 0 ? (
                   filteredImages.map(image => (
                     <ImageCard
                       key={image.id}
@@ -191,7 +185,11 @@ export default function GalleryPage() {
             {/* List View */}
             {viewMode === 'list' && (
               <div className="space-y-2">
-                {filteredImages.length > 0 ? (
+                {isLoading ? (
+                  Array.from({ length: 4 }).map((_, i) => (
+                    <div key={i} className="h-24 bg-card animate-pulse rounded-lg border border-border" />
+                  ))
+                ) : filteredImages.length > 0 ? (
                   filteredImages.map(image => (
                     <div
                       key={image.id}
@@ -254,15 +252,15 @@ export default function GalleryPage() {
               <div className="grid grid-cols-3 gap-4 mb-8 pb-8 border-b border-border">
                 <div>
                   <p className="text-sm text-foreground/60 mb-1">Format</p>
-                  <p className="font-semibold">JPG</p>
+                  <p className="font-semibold">{selectedImage.mimeType || 'Unknown'}</p>
                 </div>
                 <div>
                   <p className="text-sm text-foreground/60 mb-1">Size</p>
-                  <p className="font-semibold">2.4 MB</p>
+                  <p className="font-semibold">{selectedImage.size || 'Unknown'}</p>
                 </div>
                 <div>
                   <p className="text-sm text-foreground/60 mb-1">Dimensions</p>
-                  <p className="font-semibold">4000 × 2667</p>
+                  <p className="font-semibold">{selectedImage.dimensions || 'Unknown'}</p>
                 </div>
               </div>
               <div className="flex gap-4">

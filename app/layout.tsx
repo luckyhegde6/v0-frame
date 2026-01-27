@@ -24,11 +24,12 @@ export const metadata: Metadata = {
     ],
     apple: '/apple-icon.png',
   },
-  viewport: {
-    width: 'device-width',
-    initialScale: 1,
-    themeColor: '#00D9FF',
-  },
+}
+
+export const viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  themeColor: '#00D9FF',
 }
 
 export default function RootLayout({

@@ -1,11 +1,34 @@
 import { NextRequest, NextResponse } from 'next/server'
+import prisma from '@/lib/prisma'
 
 export async function GET(request: NextRequest) {
   try {
-    // Return mock empty data
+    const [images, collections] = await Promise.all([
+      prisma.image.findMany({
+        orderBy: {
+          createdAt: 'desc',
+        },
+        where: {
+          status: 'INGESTED',
+        },
+      }),
+      prisma.collection.findMany({
+        include: {
+          _count: {
+            select: { images: true }
+          }
+        }
+      })
+    ])
+
     return NextResponse.json({
-      data: [],
-      count: 0,
+      data: images,
+      collections: collections.map((c: any) => ({
+        id: c.id,
+        name: c.name,
+        count: c._count.images
+      })),
+      count: images.length,
     })
   } catch (error) {
     console.error('Fetch error:', error)

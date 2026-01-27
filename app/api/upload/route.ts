@@ -17,6 +17,8 @@ export async function POST(request: NextRequest) {
     // 1. Accept streamed file upload
     const formData = await request.formData();
     const file = formData.get('file') as File;
+    const title = formData.get('title') as string;
+    const collectionName = formData.get('collection') as string;
 
     if (!file) {
       return NextResponse.json({ error: 'No file provided', code: 'INVALID_REQUEST' }, { status: 400 });
@@ -37,14 +39,24 @@ export async function POST(request: NextRequest) {
       data: {
         id: imageId,
         status: 'INGESTED',
+        title: title || file.name.split('.')[0],
         tempPath: tempPath,
         checksum: metadata.checksum,
         mimeType: metadata.mimeType,
         width: metadata.width,
         height: metadata.height,
         sizeBytes: metadata.sizeBytes,
+        collections: collectionName ? {
+          connectOrCreate: {
+            where: { name: collectionName },
+            create: { name: collectionName }
+          }
+        } : undefined,
         // createdAt handled by default(now())
       },
+      include: {
+        collections: true
+      }
     });
 
     // 6. Enqueue an offload job

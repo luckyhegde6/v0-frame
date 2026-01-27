@@ -13,6 +13,7 @@ datasource db {
 model Image {
   id        String      @id @default(cuid())
   status    ImageStatus
+  title     String?
   
   // Phase 1: Required for ingestion
   tempPath  String      // Absolute path to temp file
@@ -22,6 +23,9 @@ model Image {
   height    Int
   sizeBytes Int
   
+  // Relations
+  collections Collection[]
+  
   // Timestamps
   createdAt DateTime    @default(now())
   updatedAt DateTime    @updatedAt
@@ -29,6 +33,14 @@ model Image {
   @@index([status])
   @@index([checksum])
   @@index([createdAt])
+}
+
+model Collection {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  images    Image[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 // Phase 1 Legal States Only
