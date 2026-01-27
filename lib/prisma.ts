@@ -3,11 +3,19 @@ import { PrismaPg } from '@prisma/adapter-pg'
 import { PrismaClient } from '@prisma/client'
 
 // Use POSTGRES_PRISMA_URL (Supabase) if available, fallback to DATABASE_URL (local)
-const connectionString = process.env.POSTGRES_PRISMA_URL || process.env.DATABASE_URL
+let connectionString = process.env.POSTGRES_PRISMA_URL || process.env.DATABASE_URL
 
 if (!connectionString) {
   throw new Error('DATABASE_URL or POSTGRES_PRISMA_URL environment variable is not set')
 }
+
+// Ensure explicit SSL mode to avoid pg-connection-string deprecation warning
+// Use verify-full for maximum security (production), or sslmode=require for compatibility
+if (!connectionString.includes('sslmode=')) {
+  const separator = connectionString.includes('?') ? '&' : '?'
+  connectionString += `${separator}sslmode=verify-full`
+}
+
 const pool = new Pool({ connectionString })
 const adapter = new PrismaPg(pool)
 
