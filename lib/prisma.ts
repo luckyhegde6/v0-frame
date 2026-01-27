@@ -10,10 +10,10 @@ if (!connectionString) {
 }
 
 // Ensure explicit SSL mode to avoid pg-connection-string deprecation warning
-// Use verify-full for maximum security (production), or sslmode=require for compatibility
+// Use libpq compatibility mode which accepts self-signed certificates
 if (!connectionString.includes('sslmode=')) {
   const separator = connectionString.includes('?') ? '&' : '?'
-  connectionString += `${separator}sslmode=verify-full`
+  connectionString += `${separator}sslmode=require`
 }
 
 const pool = new Pool({ connectionString })
