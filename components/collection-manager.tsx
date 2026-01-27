@@ -39,11 +39,10 @@ export function CollectionManager({
         {/* All Images */}
         <button
           onClick={() => onSelectCollection(null)}
-          className={`w-full text-left px-4 py-3 rounded-lg transition-all flex items-center gap-3 font-medium ${
-            selectedCollection === null
+          className={`w-full text-left px-4 py-3 rounded-lg transition-all flex items-center gap-3 font-medium ${selectedCollection === null
               ? 'bg-primary/20 text-primary border border-primary/50'
               : 'bg-card border border-border text-foreground hover:border-primary/50'
-          }`}
+            }`}
         >
           <Folder size={20} />
           <span className="flex-1">All Images</span>
@@ -55,11 +54,10 @@ export function CollectionManager({
           <button
             key={collection.id}
             onClick={() => onSelectCollection(collection.id)}
-            className={`w-full text-left px-4 py-3 rounded-lg transition-all flex items-center gap-3 font-medium ${
-              selectedCollection === collection.id
+            className={`w-full text-left px-4 py-3 rounded-lg transition-all flex items-center gap-3 font-medium ${selectedCollection === collection.id
                 ? 'bg-primary/20 text-primary border border-primary/50'
                 : 'bg-card border border-border text-foreground hover:border-primary/50'
-            }`}
+              }`}
           >
             <Folder size={20} />
             <span className="flex-1">{collection.name}</span>

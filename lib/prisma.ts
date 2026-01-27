@@ -3,22 +3,58 @@ import { PrismaPg } from '@prisma/adapter-pg'
 import { PrismaClient } from '@prisma/client'
 
 // Use POSTGRES_PRISMA_URL (Supabase) if available, fallback to DATABASE_URL (local)
-const connectionString = process.env.POSTGRES_PRISMA_URL || process.env.DATABASE_URL
+let connectionString = process.env.POSTGRES_PRISMA_URL || process.env.DATABASE_URL
 
 if (!connectionString) {
   throw new Error('DATABASE_URL or POSTGRES_PRISMA_URL environment variable is not set')
 }
-const pool = new Pool({ connectionString })
+
+// Detect if connecting to a local database
+const isLocal = connectionString.includes('localhost') || connectionString.includes('127.0.0.1') || process.env.ENVIRONMENT === 'local'
+
+// Ensure explicit SSL mode to avoid pg-connection-string deprecation warning
+// Only force SSL for remote connections
+if (!isLocal && !connectionString.includes('sslmode=')) {
+  const separator = connectionString.includes('?') ? '&' : '?'
+  // uselibpqcompat=true ensures compatibility with future pg versions and suppresses warnings
+  connectionString += `${separator}sslmode=require&uselibpqcompat=true`
+}
+
+// Configure pool with SSL options for self-signed certificates
+const poolConfig: any = { connectionString }
+
+// For development/self-signed certificates, disable certificate verification
+// Only configure SSL object for non-local development (e.g. connecting to Supabase from dev)
+if (!isLocal && process.env.NODE_ENV !== 'production') {
+  poolConfig.ssl = {
+    rejectUnauthorized: false,
+  }
+}
+
+const pool = new Pool(poolConfig)
 const adapter = new PrismaPg(pool)
 
-const globalForPrisma = global as unknown as { prisma: PrismaClient }
+console.log('[Prisma] Initializing with:', {
+  isLocal,
+  hasPrismaPrismaUrl: !!process.env.POSTGRES_PRISMA_URL,
+  hasDatabaseUrl: !!process.env.DATABASE_URL,
+  connectionStringTail: connectionString.split('@')[1] || connectionString.slice(-20)
+})
+
+const globalForPrisma = global as unknown as { prisma: PrismaClient & { _adapter?: any } }
 
 export const prisma =
-    globalForPrisma.prisma ||
+  (globalForPrisma.prisma && globalForPrisma.prisma._adapter) ?
+    globalForPrisma.prisma :
     new PrismaClient({
-        adapter,
-        errorFormat: 'pretty',
+      adapter,
+      errorFormat: 'pretty',
     })
+
+// Store adapter reference for cache validation
+if (!(prisma as any)._adapter) {
+  ; (prisma as any)._adapter = adapter
+}
 
 if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma
 

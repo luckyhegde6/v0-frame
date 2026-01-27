@@ -42,7 +42,8 @@ export default function GalleryPage() {
             size: (img.sizeBytes / 1024 / 1024).toFixed(2) + ' MB',
             dimensions: `${img.width} × ${img.height}`,
             mimeType: img.mimeType.split('/')[1].toUpperCase(),
-            collectionId: img.collectionId
+            collectionIds: img.collections?.map((c: any) => c.id) || [],
+            isSyncing: img.isSyncing
           }))
           setImages(mappedImages)
         }
@@ -63,7 +64,7 @@ export default function GalleryPage() {
     let result = images
 
     if (selectedCollection) {
-      result = result.filter(img => (img as any).collectionId === selectedCollection)
+      result = result.filter(img => (img as any).collectionIds?.includes(selectedCollection))
     }
 
     if (searchQuery) {
@@ -170,6 +171,7 @@ export default function GalleryPage() {
                       src={image.src || "/placeholder.svg"}
                       title={image.title}
                       uploaded={image.uploaded}
+                      isSyncing={(image as any).isSyncing}
                       onClick={() => setSelectedId(image.id)}
                       onDelete={() => console.log('Delete', image.id)}
                     />
@@ -202,7 +204,12 @@ export default function GalleryPage() {
                         className="w-16 h-16 object-cover rounded border border-border group-hover:border-primary/50 transition-colors"
                       />
                       <div className="flex-1">
-                        <p className="font-semibold text-foreground">{image.title}</p>
+                        <div className="flex items-center gap-2">
+                          <p className="font-semibold text-foreground">{image.title}</p>
+                          {(image as any).isSyncing && (
+                            <Cloud size={14} className="text-primary animate-pulse" title="Syncing..." />
+                          )}
+                        </div>
                         <p className="text-sm text-foreground/60">{image.uploaded}</p>
                       </div>
                       <div className="text-right text-sm text-foreground/60">
