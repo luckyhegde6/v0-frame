@@ -9,8 +9,15 @@ if (!connectionString) {
   throw new Error('DATABASE_URL or POSTGRES_PRISMA_URL environment variable is not set')
 }
 
+// Add SSL mode parameter to connection string if not already present
+// This is required to avoid deprecation warnings and handle self-signed certificates
+if (!connectionString.includes('sslmode=')) {
+  const separator = connectionString.includes('?') ? '&' : '?'
+  connectionString += `${separator}sslmode=require`
+}
+
 // Configure pool with SSL options for self-signed certificates
-// Always disable certificate verification for self-signed certs in development
+// rejectUnauthorized=false allows connections to self-signed certificates
 const poolConfig: any = {
   connectionString,
   ssl: {
