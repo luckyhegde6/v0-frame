@@ -16,7 +16,18 @@ if (!connectionString.includes('sslmode=')) {
   connectionString += `${separator}sslmode=require`
 }
 
-const pool = new Pool({ connectionString })
+// Configure pool with SSL options for self-signed certificates
+const poolConfig: any = { connectionString }
+
+// For development/self-signed certificates, disable certificate verification
+// In production, this should be handled via proper certificate management
+if (process.env.NODE_ENV !== 'production') {
+  poolConfig.ssl = {
+    rejectUnauthorized: false,
+  }
+}
+
+const pool = new Pool(poolConfig)
 const adapter = new PrismaPg(pool)
 
 const globalForPrisma = global as unknown as { prisma: PrismaClient }
