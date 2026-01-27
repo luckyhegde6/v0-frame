@@ -128,7 +128,7 @@ If an agent violates these principles:
 
 ### ✅ Correct: Async Upload
 
-```typescript
+\`\`\`typescript
 // API route enqueues job
 export async function POST(req: Request) {
   const file = await saveToTemp(req);
@@ -145,11 +145,11 @@ async function offloadWorker(imageId: string) {
   await updateStatus(imageId, 'STORED');
   await cleanupTemp(image);
 }
-```
+\`\`\`
 
 ### ❌ Incorrect: Synchronous Processing
 
-```typescript
+\`\`\`typescript
 // API route does heavy work
 export async function POST(req: Request) {
   const file = await saveToTemp(req);
@@ -158,31 +158,31 @@ export async function POST(req: Request) {
   await cleanupTemp(file);
   return Response.json({ success: true });
 }
-```
+\`\`\`
 
 ### ✅ Correct: Streaming
 
-```typescript
+\`\`\`typescript
 // Stream file without buffering
 export async function GET(req: Request) {
   const stream = createReadStream(filePath);
   return new Response(stream as any);
 }
-```
+\`\`\`
 
 ### ❌ Incorrect: Buffering
 
-```typescript
+\`\`\`typescript
 // Buffer entire file in memory
 export async function GET(req: Request) {
   const buffer = await readFile(filePath); // ❌ Memory issue!
   return new Response(buffer);
 }
-```
+\`\`\`
 
 ### ✅ Correct: Explicit State Transitions
 
-```typescript
+\`\`\`typescript
 // Track all state changes
 await prisma.image.update({
   where: { id: imageId },
@@ -192,14 +192,14 @@ await prisma.image.update({
     updatedAt: new Date()
   }
 });
-```
+\`\`\`
 
 ### ❌ Incorrect: Implicit State
 
-```typescript
+\`\`\`typescript
 // State change not tracked
 image.status = 'STORED'; // ❌ No audit trail!
-```
+\`\`\`
 
 ## Philosophy
 

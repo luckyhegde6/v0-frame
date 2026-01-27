@@ -119,7 +119,7 @@ Start with PHASE 0.
 
 ## 🔹 EXPECTED BAREBONES STRUCTURE (Phase 1 Output)
 When you move to Phase 1, this is roughly the minimum acceptable repo layout.
-```
+\`\`\`
 /app
   /api
     /images
@@ -149,7 +149,7 @@ When you move to Phase 1, this is roughly the minimum acceptable repo layout.
 
 /scripts
   cleanup-temp.ts       # TTL-based cleanup
-```
+\`\`\`
 
 ## HOW TO USE THIS IN PRACTICE
 - Run PHASE 0 → write the design doc

@@ -15,14 +15,14 @@ Define the expected behavior in a test file before implementing logic.
 3. **Write assertions** that should pass once implemented.
 4. **Run tests** to confirm failure.
 
-```typescript
+\`\`\`typescript
 describe('extractMetadata', () => {
   it('should throw error for invalid file type', async () => {
     await expect(extractMetadata('invalid.txt'))
       .rejects.toThrow('Invalid file type');
   });
 });
-```
+\`\`\`
 
 ### 2. 🟩 GREEN: Make it Pass
 Write the minimal amount of code required to pass the test.
@@ -32,14 +32,14 @@ Write the minimal amount of code required to pass the test.
 3. **Ignore** code quality or optimization for now.
 4. **Run tests** to confirm success.
 
-```typescript
+\`\`\`typescript
 export async function extractMetadata(file: string) {
   if (file.endsWith('.txt')) {
     throw new Error('Invalid file type');
   }
   // ...
 }
-```
+\`\`\`
 
 ### 3. 🟦 REFACTOR: Improve Code
 Clean up the code while keeping tests green.
@@ -49,7 +49,7 @@ Clean up the code while keeping tests green.
 3. **Improve** naming.
 4. **Run tests** again to ensure no regressions.
 
-```typescript
+\`\`\`typescript
 const ALLOWED_EXTENSIONS = ['.jpg', '.png'];
 
 export async function extractMetadata(file: string) {
@@ -59,7 +59,7 @@ export async function extractMetadata(file: string) {
   }
   // ...
 }
-```
+\`\`\`
 
 ## Testing Checklist
 

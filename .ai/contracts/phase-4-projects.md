@@ -30,9 +30,9 @@ Each project:
 - Cannot access other projects
 
 Filesystem:
-```
+\`\`\`
 /users/{userId}/projects/{projectId}/
-```
+\`\`\`
 ---
 
 ## Client Access Contract

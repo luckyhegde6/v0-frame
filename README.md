@@ -34,25 +34,25 @@ App - [https://framev6.vercel.app/](https://framev6.vercel.app/)
 ----
 
 # FRAME — Self-Hosted Photo Management
-``` mermaid
+\`\`\` mermaid
 graph TD
     UPLOADED[UPLOADED] --> INGESTED[INGESTED]
     INGESTED --> PROCESSING[PROCESSING]
     PROCESSING --> PROCESSED[PROCESSED]
     ANY --> FAILED[FAILED]
-```
+\`\`\`
 Failures are expected and recoverable. The home server is the single system of record.
 
 ## Architecture
 
-``` mermaid
+\`\`\` mermaid
 flowchart LR
     User[User Upload] -->|Next.js| Server[Home Server]
     Server -->|API/UI| Node[Node.js Runtime]
     Node -->|Jobs| Runner[Job Runner]
     Runner -->|Write| Disk[(/frame-data/)]
     Runner -->|Index| DB[(PostgreSQL)]
-```
+\`\`\`
 
 ## Key Design Decisions
 ### Single Source of Truth
@@ -99,16 +99,16 @@ Feature velocity is secondary by design.
 
 ## Running Locally
 
-```bash
+\`\`\`bash
 pnpm install
 pnpm local
 
 pnpm dev # for vercel
-```
+\`\`\`
 
 create an env file with below or copy from here or from Keep
 
-```
+\`\`\`
 POSTGRES_URL
 POSTGRES_PRISMA_URL
 POSTGRES_URL_NON_POOLING
@@ -122,13 +122,13 @@ SUPABASE_URL
 SUPABASE_JWT_SECRET
 NEXT_PUBLIC_SUPABASE_ANON_KEY
 NEXT_PUBLIC_SUPABASE_URL
-```
+\`\`\`
 
-```bash
+\`\`\`bash
 DATABASE_URL="postgresql://postgres:postgres@localhost:5432/frame?schema=public"
 POSTGRES_PRISMA_URL="postgresql://postgres:postgres@localhost:5432/frame?schema=public"
 POSTGRES_URL_NON_POOLING="postgresql://postgres:postgres@localhost:5432/frame?schema=public"
-```
+\`\`\`
 ---
 
 ## 🤖 AI Agent System

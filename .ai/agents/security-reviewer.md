@@ -66,7 +66,7 @@ Your primary responsibility is to identify security vulnerabilities, suggest sec
 ## Common Vulnerabilities
 
 ### Path Traversal
-```typescript
+\`\`\`typescript
 // ❌ Vulnerable
 const filePath = `/uploads/${req.query.filename}`;
 
@@ -74,10 +74,10 @@ const filePath = `/uploads/${req.query.filename}`;
 import path from 'path';
 const filename = path.basename(req.query.filename);
 const filePath = path.join('/uploads', filename);
-```
+\`\`\`
 
 ### File Upload Validation
-```typescript
+\`\`\`typescript
 // ❌ Insufficient
 if (file.type === 'image/jpeg') { ... }
 
@@ -95,10 +95,10 @@ if (!allowedExtensions.some(ext => file.name.endsWith(ext))) {
 if (file.size > maxSize) {
   throw new Error('File too large');
 }
-```
+\`\`\`
 
 ### Environment Variables
-```typescript
+\`\`\`typescript
 // ❌ Hardcoded secrets
 const apiKey = 'sk-1234567890abcdef';
 
@@ -107,7 +107,7 @@ const apiKey = process.env.API_KEY;
 if (!apiKey) {
   throw new Error('API_KEY not configured');
 }
-```
+\`\`\`
 
 ## Expected Output
 

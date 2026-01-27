@@ -50,7 +50,21 @@ export function ImageCard({ id, src, title, uploaded, onClick, onDelete }: Image
                   </button>
                   <button
                     onClick={() => {
-                      navigator.clipboard.writeText(`frame.app/img/${id}`)
+                      if (navigator.clipboard && window.isSecureContext) {
+                        navigator.clipboard.writeText(`frame.app/img/${id}`)
+                      } else {
+                        // Fallback for non-secure contexts
+                        const textArea = document.createElement('textarea')
+                        textArea.value = `frame.app/img/${id}`
+                        document.body.appendChild(textArea)
+                        textArea.select()
+                        try {
+                          document.execCommand('copy')
+                        } catch (err) {
+                          console.error('Failed to copy:', err)
+                        }
+                        document.body.removeChild(textArea)
+                      }
                       setShowMenu(false)
                     }}
                     className="w-full text-left px-3 py-2 hover:bg-primary/10 transition-colors flex items-center gap-2 text-sm"

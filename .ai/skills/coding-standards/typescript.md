@@ -26,7 +26,7 @@ This guide defines the TypeScript coding standards for the FRAME project.
 ### No `any`
 Avoid `any` at all costs. Use `unknown` if the type is truly not known yet, and narrow it down.
 
-```typescript
+\`\`\`typescript
 // ❌ Bad
 function process(data: any) {
   return data.value;
@@ -39,12 +39,12 @@ function process(data: unknown) {
   }
   throw new Error('Invalid data');
 }
-```
+\`\`\`
 
 ### Explicit Return Types
 Always define return types for functions, especially exported ones.
 
-```typescript
+\`\`\`typescript
 // ❌ Bad
 export function getUser(id: string) {
   return db.user.findUnique({ where: { id } });
@@ -54,12 +54,12 @@ export function getUser(id: string) {
 export function getUser(id: string): Promise<User | null> {
   return db.user.findUnique({ where: { id } });
 }
-```
+\`\`\`
 
 ### Type vs Interface
 Use `interface` for object definitions and `type` for unions/intersections.
 
-```typescript
+\`\`\`typescript
 // ✅ Interface for objects
 interface User {
   id: string;
@@ -68,14 +68,14 @@ interface User {
 
 // ✅ Type for unions
 type UserStatus = 'active' | 'inactive' | 'suspended';
-```
+\`\`\`
 
 ## Best Practices
 
 ### Enums vs Union Types
 Prefer String Literal Unions over Enums for simplicity and smaller bundle size.
 
-```typescript
+\`\`\`typescript
 // ❌ Avoid if possible
 enum Status {
   Active = 'active',
@@ -84,7 +84,7 @@ enum Status {
 
 // ✅ Preferred
 type Status = 'active' | 'inactive';
-```
+\`\`\`
 
 ### Null vs Undefined
 Use `null` for "intentional absence of value" (API responses, database).
@@ -93,7 +93,7 @@ Use `undefined` for "value not initialized" (optional parameters).
 ### Async/Await
 Always use async/await over raw Promises.
 
-```typescript
+\`\`\`typescript
 // ❌ Bad
 function getData() {
   return fetch('/api').then(res => res.json());
@@ -104,14 +104,14 @@ async function getData() {
   const res = await fetch('/api');
   return res.json();
 }
-```
+\`\`\`
 
 ## React Specifics
 
 ### Component Props
 Always define a specialized interface for component props.
 
-```typescript
+\`\`\`typescript
 interface UserCardProps {
   user: User;
   onEdit: (id: string) => void;
@@ -120,7 +120,7 @@ interface UserCardProps {
 export function UserCard({ user, onEdit }: UserCardProps) {
   // ...
 }
-```
+\`\`\`
 
 ### Hooks
 Prefix custom hooks with `use`.
@@ -129,7 +129,7 @@ Prefix custom hooks with `use`.
 
 Use typed error handling where possible, or standardized error classes.
 
-```typescript
+\`\`\`typescript
 try {
   await callback();
 } catch (error) {
@@ -139,4 +139,4 @@ try {
     handleUnknownError(error);
   }
 }
-```
+\`\`\`

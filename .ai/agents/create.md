@@ -230,7 +230,7 @@ When completing a task, provide:
    - Returns upload ID immediately
 
 2. **Implementation**
-   ```typescript
+   \`\`\`typescript
    // app/api/upload/route.ts
    export async function POST(request: Request) {
      // Validate input
@@ -239,7 +239,7 @@ When completing a task, provide:
      // Enqueue job
      // Return response
    }
-   ```
+   \`\`\`
 
 3. **Documentation**
    - Update API documentation

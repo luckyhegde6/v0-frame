@@ -147,7 +147,7 @@ The FRAME system is:
 - Which has acceptable trade-offs?
 
 **Document Decision**:
-```markdown
+\`\`\`markdown
 # ADR: [Title]
 
 ## Context
@@ -167,7 +167,7 @@ The FRAME system is:
 
 ## Status
 [Proposed / Accepted / Deprecated]
-```
+\`\`\`
 
 ### Step 4: Design Implementation
 
@@ -188,7 +188,7 @@ The FRAME system is:
 
 ### 1. Upload Pipeline
 
-```
+\`\`\`
 User → API Route → Temp Storage → DB Record → Job Queue
                                                     ↓
                                             Background Worker
@@ -196,7 +196,7 @@ User → API Route → Temp Storage → DB Record → Job Queue
                                             Home Server Storage
                                                     ↓
                                             Confirmation → Cleanup
-```
+\`\`\`
 
 **Key Decisions**:
 - Streaming upload (no buffering)
@@ -206,11 +206,11 @@ User → API Route → Temp Storage → DB Record → Job Queue
 
 ### 2. Image Lifecycle State Machine
 
-```
+\`\`\`
 UPLOADED → INGESTED → STORED → PROCESSING → PROCESSED
     ↓          ↓          ↓          ↓           ↓
   FAILED    FAILED    FAILED    FAILED      COMPLETE
-```
+\`\`\`
 
 **Key Decisions**:
 - Explicit states
@@ -220,13 +220,13 @@ UPLOADED → INGESTED → STORED → PROCESSING → PROCESSED
 
 ### 3. Background Job Pattern
 
-```
+\`\`\`
 API Route → Enqueue Job → Job Queue → Worker → Process → Update State
                               ↓
                          Retry Logic
                               ↓
                       Dead Letter Queue
-```
+\`\`\`
 
 **Key Decisions**:
 - Idempotent jobs
@@ -236,13 +236,13 @@ API Route → Enqueue Job → Job Queue → Worker → Process → Update State
 
 ### 4. Streaming Download
 
-```
+\`\`\`
 Request → Verify Auth → Locate File → Stream Response
                             ↓
                     Home Server / Cloud
                             ↓
                     Pipe to Response
-```
+\`\`\`
 
 **Key Decisions**:
 - No buffering
@@ -254,7 +254,7 @@ Request → Verify Auth → Locate File → Stream Response
 
 ### Async Job Pattern
 
-```typescript
+\`\`\`typescript
 // API Route: Enqueue only
 export async function POST(req: Request) {
   const data = await validateRequest(req);
@@ -272,11 +272,11 @@ async function processImageJob(jobData: JobData) {
     throw error; // Trigger retry
   }
 }
-```
+\`\`\`
 
 ### Streaming Pattern
 
-```typescript
+\`\`\`typescript
 // Stream file without buffering
 export async function GET(req: Request) {
   const { imageId } = await validateRequest(req);
@@ -290,11 +290,11 @@ export async function GET(req: Request) {
     }
   });
 }
-```
+\`\`\`
 
 ### State Machine Pattern
 
-```typescript
+\`\`\`typescript
 // Explicit state transitions
 class ImageLifecycle {
   private static transitions = {
@@ -320,7 +320,7 @@ class ImageLifecycle {
     });
   }
 }
-```
+\`\`\`
 
 ## Technology Decisions
 
