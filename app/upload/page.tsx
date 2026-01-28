@@ -119,7 +119,8 @@ export default function UploadPage() {
         })
 
         if (!response.ok) {
-          throw new Error('Upload failed')
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(errorData.error || 'Upload failed');
         }
         currentIdx++
       }
@@ -130,7 +131,7 @@ export default function UploadPage() {
       alert('Upload successful!')
     } catch (error) {
       console.error('Upload error:', error)
-      alert('Upload failed. Please try again.')
+      alert(`Upload failed: ${error instanceof Error ? error.message : 'Please try again.'}`)
     } finally {
       setIsUploading(false)
     }

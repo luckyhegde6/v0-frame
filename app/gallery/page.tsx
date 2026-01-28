@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { useState, useMemo, useEffect } from 'react'
-import { Upload, Grid, List, Loader2 } from 'lucide-react'
+import { Upload, Grid, List, Loader2, Cloud } from 'lucide-react'
 import { GallerySearch } from '@/components/gallery-search'
 import { CollectionManager } from '@/components/collection-manager'
 import { ImageCard } from '@/components/image-card'
@@ -207,7 +207,9 @@ export default function GalleryPage() {
                         <div className="flex items-center gap-2">
                           <p className="font-semibold text-foreground">{image.title}</p>
                           {(image as any).isSyncing && (
-                            <Cloud size={14} className="text-primary animate-pulse" title="Syncing..." />
+                            <span title="Syncing...">
+                              <Cloud size={14} className="text-primary animate-pulse" />
+                            </span>
                           )}
                         </div>
                         <p className="text-sm text-foreground/60">{image.uploaded}</p>
