@@ -24,8 +24,9 @@ if (!isLocal && !connectionString.includes('sslmode=')) {
 const poolConfig: any = { connectionString }
 
 // For development/self-signed certificates, disable certificate verification
-// Only configure SSL object for non-local development (e.g. connecting to Supabase from dev)
-if (!isLocal && process.env.NODE_ENV !== 'production') {
+// Configure SSL for all non-local connections (both dev and production)
+// This handles self-signed certificates commonly used in development and some cloud providers
+if (!isLocal) {
   poolConfig.ssl = {
     rejectUnauthorized: false,
   }
