@@ -1,6 +1,13 @@
 -- Phase 1 Ingestion Database Schema
 -- Creates tables for Image, Collection, and Job models
 
+-- Drop existing objects if they exist
+DROP TABLE IF EXISTS "Job" CASCADE;
+DROP TABLE IF EXISTS "_CollectionToImage" CASCADE;
+DROP TABLE IF EXISTS "Image" CASCADE;
+DROP TABLE IF EXISTS "Collection" CASCADE;
+DROP TYPE IF EXISTS "ImageStatus" CASCADE;
+
 -- Create enum type for ImageStatus
 CREATE TYPE "ImageStatus" AS ENUM ('UPLOADED', 'INGESTED', 'FAILED');
 
