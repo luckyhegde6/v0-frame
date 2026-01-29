@@ -9,11 +9,12 @@ if (!connectionString) {
   throw new Error('DATABASE_URL or POSTGRES_PRISMA_URL environment variable is not set')
 }
 
-// Add SSL mode parameter to connection string if not already present
-// This is required to avoid deprecation warnings and handle self-signed certificates
-if (!connectionString.includes('sslmode=')) {
+// Add SSL parameters to connection string if not already present
+// Use libpq compatibility mode with explicit sslmode=require for proper self-signed certificate handling
+// This prevents deprecation warnings and follows PostgreSQL standard libpq semantics
+if (!connectionString.includes('sslmode=') && !connectionString.includes('uselibpqcompat=')) {
   const separator = connectionString.includes('?') ? '&' : '?'
-  connectionString += `${separator}sslmode=require`
+  connectionString += `${separator}uselibpqcompat=true&sslmode=require`
 }
 
 // Configure pool with SSL options for self-signed certificates
