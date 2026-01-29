@@ -32,17 +32,18 @@ CREATE TABLE "Collection" (
   "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
--- Create _ImageToCollection join table for many-to-many relationship
-CREATE TABLE "_ImageToCollection" (
+-- Create _CollectionToImage join table for many-to-many relationship
+-- Prisma generates join table names alphabetically: Collection before Image
+CREATE TABLE "_CollectionToImage" (
   "A" TEXT NOT NULL,
   "B" TEXT NOT NULL,
-  CONSTRAINT "_ImageToCollection_A_fkey" FOREIGN KEY ("A") REFERENCES "Image" ("id") ON DELETE CASCADE ON UPDATE CASCADE,
-  CONSTRAINT "_ImageToCollection_B_fkey" FOREIGN KEY ("B") REFERENCES "Collection" ("id") ON DELETE CASCADE ON UPDATE CASCADE
+  CONSTRAINT "_CollectionToImage_A_fkey" FOREIGN KEY ("A") REFERENCES "Collection" ("id") ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT "_CollectionToImage_B_fkey" FOREIGN KEY ("B") REFERENCES "Image" ("id") ON DELETE CASCADE ON UPDATE CASCADE
 );
 
 -- Create unique index for the join table
-CREATE UNIQUE INDEX "_ImageToCollection_AB_unique" ON "_ImageToCollection"("A", "B");
-CREATE INDEX "_ImageToCollection_B_index" ON "_ImageToCollection"("B");
+CREATE UNIQUE INDEX "_CollectionToImage_AB_unique" ON "_CollectionToImage"("A", "B");
+CREATE INDEX "_CollectionToImage_B_index" ON "_CollectionToImage"("B");
 
 -- Create Job table
 CREATE TABLE "Job" (
