@@ -9,7 +9,7 @@ datasource db {
   provider = "postgresql"
 }
 
-// Phase 1: Image Ingestion Foundation
+// Phase 1 & 2: Image Ingestion and Processing
 model Image {
   id        String      @id @default(cuid())
   status    ImageStatus
@@ -23,8 +23,13 @@ model Image {
   height    Int
   sizeBytes Int
   
+  // Phase 2: Derived assets (null until generated)
+  thumbnailPath   String?  // Path to generated thumbnail
+  previewPath     String?  // Path to web-optimized preview
+  
   // Relations
   collections Collection[]
+  jobs        Job[]
   
   // Timestamps
   createdAt DateTime    @default(now())
@@ -43,20 +48,51 @@ model Collection {
   updatedAt DateTime @updatedAt
 }
 
-// Phase 1 Legal States Only
+// Phase 1 & 2: Image Lifecycle States
 enum ImageStatus {
   UPLOADED   // Client finished sending bytes
   INGESTED   // Temp file written + metadata stored
+  PROCESSING // Assets generation in progress
+  STORED     // Original + derived assets ready
   FAILED     // Unrecoverable ingestion error
-  // STORED, PROCESSING, PROCESSED are strictly forbidden in Phase 1
 }
 
-// Job queue for Phase 2 offloading (stub for Phase 1)
+// Phase 2: Persistent Job Model with Locking & Retries
+// See: .ai/contracts/phase-2-processing.md
 model Job {
-  id        String   @id @default(cuid())
-  type      String
-  payload   String   // JSON payload
-  status    String   // PENDING, COMPLETED, FAILED
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id          String   @id @default(cuid())
+  
+  // Job identity
+  type        String   // e.g., OFFLOAD_ORIGINAL, THUMBNAIL_GENERATION
+  payload     String   // JSON payload
+  
+  // Job status lifecycle
+  status      JobStatus @default(PENDING) // PENDING, RUNNING, COMPLETED, FAILED
+  
+  // Retry & locking
+  attempts    Int      @default(0)
+  maxAttempts Int      @default(3)
+  lockedAt    DateTime? // When lock was acquired
+  lockedBy    String?   // Process/worker ID holding lock
+  lastError   String?   // Most recent error message
+  
+  // Association to image (for processing jobs)
+  imageId     String?
+  image       Image?    @relation(fields: [imageId], references: [id], onDelete: SetNull)
+  
+  // Timestamps
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@index([status])
+  @@index([imageId])
+  @@index([type])
+  @@index([createdAt])
+}
+
+enum JobStatus {
+  PENDING
+  RUNNING
+  COMPLETED
+  FAILED
 }
