@@ -1,18 +1,19 @@
 'use client'
 
 import { useState } from 'react'
-import { MoreVertical, Download, Share2, Trash2, Copy } from 'lucide-react'
+import { MoreVertical, Download, Share2, Trash2, Copy, Cloud } from 'lucide-react'
 
 interface ImageCardProps {
   id: string
   src: string
   title: string
   uploaded: string
+  isSyncing?: boolean
   onClick: () => void
   onDelete?: () => void
 }
 
-export function ImageCard({ id, src, title, uploaded, onClick, onDelete }: ImageCardProps) {
+export function ImageCard({ id, src, title, uploaded, isSyncing, onClick, onDelete }: ImageCardProps) {
   const [showMenu, setShowMenu] = useState(false)
 
   return (
@@ -24,7 +25,14 @@ export function ImageCard({ id, src, title, uploaded, onClick, onDelete }: Image
           className="w-full h-40 object-cover group-hover:scale-105 transition-transform duration-300"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-between p-3">
-          <div className="flex justify-end">
+          <div className="flex justify-between items-start">
+            {isSyncing ? (
+              <div className="p-1.5 bg-primary/80 backdrop-blur-sm rounded-lg text-white" title="Syncing to home server...">
+                <Cloud size={16} className="animate-pulse" />
+              </div>
+            ) : (
+              <div />
+            )}
             <div className="relative">
               <button
                 onClick={e => {

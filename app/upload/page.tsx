@@ -2,7 +2,7 @@
 
 import React from "react"
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import Link from 'next/link'
 import { Upload, X, ImageIcon, FileUp } from 'lucide-react'
 
@@ -18,7 +18,25 @@ export default function UploadPage() {
   const [isDragging, setIsDragging] = useState(false)
   const [isUploading, setIsUploading] = useState(false)
   const [collectionName, setCollectionName] = useState('')
+  const [collectionMode, setCollectionMode] = useState<'existing' | 'new'>('existing')
+  const [selectedCollectionIds, setSelectedCollectionIds] = useState<string[]>([])
+  const [existingCollections, setExistingCollections] = useState<{ id: string; name: string }[]>([])
   const [uploadProgress, setUploadProgress] = useState({ current: 0, total: 0 })
+
+  useEffect(() => {
+    const fetchCollections = async () => {
+      try {
+        const response = await fetch('/api/images')
+        const result = await response.json()
+        if (result.collections) {
+          setExistingCollections(result.collections)
+        }
+      } catch (error) {
+        console.error('Failed to fetch collections:', error)
+      }
+    }
+    fetchCollections()
+  }, [])
 
   const handleDragOver = useCallback((e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault()
@@ -69,6 +87,12 @@ export default function UploadPage() {
     setFiles(prev => prev.filter(f => f.id !== id))
   }
 
+  const toggleCollectionId = (id: string) => {
+    setSelectedCollectionIds(prev =>
+      prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
+    )
+  }
+
   const handleUpload = async () => {
     if (files.length === 0) return
 
@@ -82,8 +106,11 @@ export default function UploadPage() {
         const formData = new FormData()
         formData.append('file', file.file)
         formData.append('title', file.name.split('.')[0])
-        if (collectionName) {
-          formData.append('collection', collectionName)
+
+        if (collectionMode === 'existing' && selectedCollectionIds.length > 0) {
+          formData.append('collectionIds', JSON.stringify(selectedCollectionIds))
+        } else if (collectionMode === 'new' && collectionName.trim()) {
+          formData.append('collection', collectionName.trim())
         }
 
         const response = await fetch('/api/upload', {
@@ -92,17 +119,19 @@ export default function UploadPage() {
         })
 
         if (!response.ok) {
-          throw new Error('Upload failed')
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(errorData.error || 'Upload failed');
         }
         currentIdx++
       }
 
       setFiles([])
       setCollectionName('')
+      setSelectedCollectionIds([])
       alert('Upload successful!')
     } catch (error) {
       console.error('Upload error:', error)
-      alert('Upload failed. Please try again.')
+      alert(`Upload failed: ${error instanceof Error ? error.message : 'Please try again.'}`)
     } finally {
       setIsUploading(false)
     }
@@ -129,23 +158,78 @@ export default function UploadPage() {
           </p>
         </div>
 
-        {/* Collection Input */}
+        {/* Collection Section */}
         <div className="mb-8 p-6 bg-card border border-border rounded-2xl">
-          <label htmlFor="collection" className="block text-sm font-medium mb-2 text-foreground/70">
-            Add to Collection (Optional)
-          </label>
-          <input
-            type="text"
-            id="collection"
-            placeholder="e.g. Summer Vacation, Portfolio..."
-            className="w-full bg-background border border-border rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all"
-            value={collectionName}
-            onChange={(e) => setCollectionName(e.target.value)}
-            disabled={isUploading}
-          />
-          <p className="mt-2 text-xs text-foreground/40">
-            Creating a new name will create a new collection
-          </p>
+          <h3 className="text-sm font-medium mb-4 text-foreground/70">Assign to Collections</h3>
+
+          <div className="flex gap-6 mb-6">
+            <label className="flex items-center gap-2 cursor-pointer group">
+              <input
+                type="radio"
+                name="collectionMode"
+                className="w-4 h-4 text-primary bg-background border-border focus:ring-primary/50"
+                checked={collectionMode === 'existing'}
+                onChange={() => setCollectionMode('existing')}
+                disabled={isUploading}
+              />
+              <span className={`text-sm font-medium transition-colors ${collectionMode === 'existing' ? 'text-foreground' : 'text-foreground/40 group-hover:text-foreground/60'}`}>
+                Add to Existing
+              </span>
+            </label>
+            <label className="flex items-center gap-2 cursor-pointer group">
+              <input
+                type="radio"
+                name="collectionMode"
+                className="w-4 h-4 text-primary bg-background border-border focus:ring-primary/50"
+                checked={collectionMode === 'new'}
+                onChange={() => setCollectionMode('new')}
+                disabled={isUploading}
+              />
+              <span className={`text-sm font-medium transition-colors ${collectionMode === 'new' ? 'text-foreground' : 'text-foreground/40 group-hover:text-foreground/60'}`}>
+                Create New
+              </span>
+            </label>
+          </div>
+
+          {collectionMode === 'existing' ? (
+            <div className="space-y-2">
+              <div className="max-h-40 overflow-y-auto pr-2 custom-scrollbar">
+                {existingCollections.length > 0 ? (
+                  <div className="grid grid-cols-2 gap-2">
+                    {existingCollections.map(c => (
+                      <button
+                        key={c.id}
+                        onClick={() => toggleCollectionId(c.id)}
+                        disabled={isUploading}
+                        className={`text-left px-4 py-2 rounded-lg border text-sm transition-all ${selectedCollectionIds.includes(c.id)
+                          ? 'bg-primary/10 border-primary text-primary font-medium'
+                          : 'bg-background border-border text-foreground/60 hover:border-primary/50 hover:text-foreground'
+                          }`}
+                      >
+                        {c.name}
+                      </button>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-foreground/40 italic py-2">No collections found. Create a new one!</p>
+                )}
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <input
+                type="text"
+                placeholder="e.g. Summer Vacation, Portfolio..."
+                className="w-full bg-background border border-border rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all"
+                value={collectionName}
+                onChange={(e) => setCollectionName(e.target.value)}
+                disabled={isUploading}
+              />
+              <p className="text-xs text-foreground/40">
+                A new collection will be created with this name.
+              </p>
+            </div>
+          )}
         </div>
 
         {/* Upload Zone */}
