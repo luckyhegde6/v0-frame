@@ -4,7 +4,7 @@
 import fs from 'fs/promises';
 import path from 'path';
 import prisma from '@/lib/prisma';
-import { enqueueThumbnailJob, enqueuePreviewJob } from '@/lib/jobs/queue';
+import { enqueueThumbnailJob, enqueuePreviewJob, enqueueExifJob } from '@/lib/jobs/queue';
 
 const STORAGE_DIR = process.env.STORAGE_DIR || '/tmp/storage';
 
@@ -29,7 +29,7 @@ export async function handleOffloadOriginal(payload: any, jobId: string): Promis
 
   // 3. Move temp file to permanent storage (idempotent - safe to regenerate)
   console.log(`[Offload Handler] Moving temp file: ${tempPath} → ${storagePath}`);
-  
+
   try {
     await fs.rename(tempPath, storagePath);
   } catch (error: any) {
@@ -39,7 +39,7 @@ export async function handleOffloadOriginal(payload: any, jobId: string): Promis
       // Clean up the temp file if it still exists
       try {
         await fs.unlink(tempPath);
-      } catch {}
+      } catch { }
     } else {
       throw error;
     }
@@ -58,9 +58,10 @@ export async function handleOffloadOriginal(payload: any, jobId: string): Promis
 
   // 5. Enqueue derived asset generation jobs
   console.log(`[Offload Handler] Enqueueing derived asset jobs: ${imageId}`);
-  
+
   await enqueueThumbnailJob(imageId, storagePath);
   await enqueuePreviewJob(imageId, storagePath);
+  await enqueueExifJob(imageId, storagePath);
 
   console.log(`[Offload Handler] Job complete: ${imageId}`);
 }

@@ -23,6 +23,12 @@ export interface PreviewJob {
     originalPath: string;
 }
 
+export interface ExifJob {
+    type: 'EXIF_ENRICHMENT';
+    imageId: string;
+    originalPath: string;
+}
+
 /**
  * Enqueues a job for offloading
  * Contract §6: Job enqueue is fire-and-forget.
@@ -78,6 +84,27 @@ export async function enqueuePreviewJob(imageId: string, originalPath: string): 
             type: 'PREVIEW_GENERATION',
             payload: JSON.stringify({
                 type: 'PREVIEW_GENERATION',
+                imageId,
+                originalPath
+            }),
+            status: 'PENDING',
+            imageId,
+            maxAttempts: 3
+        }
+    });
+}
+
+/**
+ * Enqueue EXIF enrichment job
+ */
+export async function enqueueExifJob(imageId: string, originalPath: string): Promise<void> {
+    console.log('[Job Enqueue] Queueing EXIF job:', { imageId });
+
+    await prisma.job.create({
+        data: {
+            type: 'EXIF_ENRICHMENT',
+            payload: JSON.stringify({
+                type: 'EXIF_ENRICHMENT',
                 imageId,
                 originalPath
             }),
