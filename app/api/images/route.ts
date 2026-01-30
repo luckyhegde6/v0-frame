@@ -3,16 +3,18 @@ import prisma from '@/lib/prisma'
 
 export async function GET(request: NextRequest) {
   try {
-    const [images, collections, pendingJobs] = await Promise.all([
+    // Phase 2: Include all image statuses, not just INGESTED
+    const [images, collections, jobsByImageId] = await Promise.all([
       prisma.image.findMany({
         orderBy: {
           createdAt: 'desc',
         },
-        where: {
-          status: 'INGESTED',
-        },
         include: {
-          collections: true
+          collections: true,
+          jobs: {
+            where: { status: { in: ['PENDING', 'RUNNING'] } },
+            select: { id: true, type: true, status: true }
+          }
         }
       }),
       prisma.collection.findMany({
@@ -22,19 +24,34 @@ export async function GET(request: NextRequest) {
           }
         }
       }),
+      // Get all processing jobs for quick reference
       prisma.job.findMany({
         where: {
-          status: 'PENDING',
-          type: 'OFFLOAD_ORIGINAL'
-        }
+          status: { in: ['PENDING', 'RUNNING'] }
+        },
+        select: { id: true, imageId: true, type: true, status: true }
       })
     ])
+
+    // Create lookup map for jobs by imageId
+    const jobsByImageMap = new Map<string, typeof jobsByImageId>();
+    jobsByImageId.forEach(job => {
+      if (!job.imageId) return;
+      if (!jobsByImageMap.has(job.imageId)) {
+        jobsByImageMap.set(job.imageId, []);
+      }
+      jobsByImageMap.get(job.imageId)?.push(job);
+    });
 
     return NextResponse.json({
       data: images.map((img: any) => ({
         ...img,
-        // In Phase 1, an image is "Syncing" if there is a pending offload job for its ID
-        isSyncing: pendingJobs.some(job => job.payload.includes(img.id))
+        // Phase 2: Include processing status
+        processingJobs: jobsByImageMap.get(img.id) || [],
+        isProcessing: img.status === 'PROCESSING',
+        isStored: img.status === 'STORED',
+        // Phase 1 compat: backwards-compatible isSyncing flag
+        isSyncing: img.status === 'PROCESSING' || img.jobs.length > 0
       })),
       collections: collections.map((c: any) => ({
         id: c.id,
