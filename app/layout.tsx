@@ -1,7 +1,11 @@
 import React from "react"
 import type { Metadata } from 'next'
 import { Analytics } from "@vercel/analytics/next"
+import { initializeServer } from '@/lib/server/initialize'
 import './globals.css'
+
+// Phase 2: Initialize job runner on server startup
+initializeServer().catch(err => console.error('[Init Error]', err))
 
 export const metadata: Metadata = {
   title: 'FRAME - Your Gallery, Your Story',

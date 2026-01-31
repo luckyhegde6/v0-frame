@@ -9,7 +9,7 @@ datasource db {
   provider = "postgresql"
 }
 
-// Phase 1: Image Ingestion Foundation
+// Phase 1, 2 & 3: Image Ingestion, Processing and Ownership
 model Image {
   id        String      @id @default(cuid())
   status    ImageStatus
@@ -23,8 +23,31 @@ model Image {
   height    Int
   sizeBytes Int
   
+  // Phase 2: Derived assets (null until generated)
+  thumbnailPath   String?  // Path to generated thumbnail
+  previewPath     String?  // Path to web-optimized preview
+  
+  // Phase 3: Ownership & Enriched Metadata
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  // EXIF Enrichment (Phase 3)
+  make            String?  // Camera manufacturer
+  model           String?  // Camera model
+  exposureTime    String?  // Shutter speed
+  fNumber         Float?   // Aperture
+  iso             Int?     // ISO speed
+  focalLength     Float?   // Focal length
+  lensModel       String?  // Lens model
+  software        String?  // Software used
+  dateTaken       DateTime? // Actual capture date
+  lat             Float?   // GPS Latitude
+  lng             Float?   // GPS Longitude
+  alt             Float?   // GPS Altitude
+  
   // Relations
   collections Collection[]
+  jobs        Job[]
   
   // Timestamps
   createdAt DateTime    @default(now())
@@ -32,31 +55,129 @@ model Image {
   
   @@index([status])
   @@index([checksum])
+  @@index([userId])
   @@index([createdAt])
 }
 
 model Collection {
   id        String   @id @default(cuid())
-  name      String   @unique
+  name      String
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   images    Image[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@unique([name, userId])
+  @@index([userId])
 }
 
-// Phase 1 Legal States Only
+// Phase 3: NextAuth.js Models & RBAC
+model Account {
+  id                 String  @id @default(cuid())
+  userId             String
+  type               String
+  provider           String
+  providerAccountId  String
+  refresh_token      String?  @db.Text
+  access_token       String?  @db.Text
+  expires_at         Int?
+  token_type         String?
+  scope              String?
+  id_token           String?  @db.Text
+  session_state      String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String?   @unique
+  emailVerified DateTime?
+  image         String?
+  password      String?   // For Credentials provider
+  role          Role      @default(USER)
+  
+  accounts      Account[]
+  sessions      Session[]
+  images        Image[]
+  collections   Collection[]
+
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+enum Role {
+  USER
+  PRO
+  CLIENT
+  ADMIN
+}
+
+// Phase 1 & 2: Image Lifecycle States
 enum ImageStatus {
   UPLOADED   // Client finished sending bytes
   INGESTED   // Temp file written + metadata stored
+  PROCESSING // Assets generation in progress
+  STORED     // Original + derived assets ready
   FAILED     // Unrecoverable ingestion error
-  // STORED, PROCESSING, PROCESSED are strictly forbidden in Phase 1
 }
 
-// Job queue for Phase 2 offloading (stub for Phase 1)
+// Phase 2: Persistent Job Model with Locking & Retries
+// See: .ai/contracts/phase-2-processing.md
 model Job {
-  id        String   @id @default(cuid())
-  type      String
-  payload   String   // JSON payload
-  status    String   // PENDING, COMPLETED, FAILED
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id          String   @id @default(cuid())
+  
+  // Job identity
+  type        String   // e.g., OFFLOAD_ORIGINAL, THUMBNAIL_GENERATION, EXIF_ENRICHMENT
+  payload     String   // JSON payload
+  
+  // Job status lifecycle
+  status      JobStatus @default(PENDING) // PENDING, RUNNING, COMPLETED, FAILED
+  
+  // Retry & locking
+  attempts    Int      @default(0)
+  maxAttempts Int      @default(3)
+  lockedAt    DateTime? // When lock was acquired
+  lockedBy    String?   // Process/worker ID holding lock
+  lastError   String?   // Most recent error message
+  
+  // Association to image (for processing jobs)
+  imageId     String?
+  image       Image?    @relation(fields: [imageId], references: [id], onDelete: Cascade)
+  
+  // Timestamps
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@index([status])
+  @@index([imageId])
+  @@index([type])
+  @@index([createdAt])
+}
+
+enum JobStatus {
+  PENDING
+  RUNNING
+  COMPLETED
+  FAILED
 }
