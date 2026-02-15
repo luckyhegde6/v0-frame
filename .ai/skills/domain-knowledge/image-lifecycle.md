@@ -2,22 +2,41 @@
 
 This document defines the complete image lifecycle for the FRAME photo management system.
 
+> [!IMPORTANT]
+> **UPDATE (2026-02-15)**: Home server integration has been moved to Phase 8.
+> Phases 1-7 now operate entirely in cloud/temporary storage.
+> Original files remain in temp storage until Phase 8 implementation.
+
 ## Overview
 
 Every image in FRAME follows an explicit, enforced lifecycle from upload to final processing. The lifecycle ensures data safety, clear state transitions, and proper async boundaries.
 
-## Complete Lifecycle
+## Complete Lifecycle (Phases 1-7 - Cloud Only)
 
 ```
 UPLOADED
 ↓
 INGESTED (temporary cloud storage)
 ↓
-STORED (home server confirmed)
+PROCESSING (background pipeline)
+↓
+PROCESSED (all assets ready)
+```
+
+## Complete Lifecycle (With Phase 8 - Home Server)
+
+```
+UPLOADED
+↓
+INGESTED (temporary cloud storage)
 ↓
 PROCESSING (background pipeline)
 ↓
-PROCESSED
+PROCESSED (all assets ready in cloud)
+↓
+[Phase 8: Home Server Integration]
+↓
+STORED (original moved to home server)
 ```
 
 At any point, an image may transition to:
@@ -35,30 +54,41 @@ FAILED → UPLOADED (retry from beginning)
 - `FAILED` - Unrecoverable ingestion error
 
 **Forbidden States** (Phase 2+):
-- ❌ `STORED` - Not yet implemented
 - ❌ `PROCESSING` - Not yet implemented
 - ❌ `PROCESSED` - Not yet implemented
+- ❌ `STORED` - Deferred to Phase 8
 
 > [!IMPORTANT]
 > **Phase 1 work must comply with Phase 1 Ingestion Contracts**  
 > See: [`.ai/contracts/phase-1-ingestion.md`](file:///.ai/contracts/phase-1-ingestion.md)
 
-### Phase 2: Home Server Offload
+### Phase 2: Asset Processing (UPDATED)
 
 **New States**:
-- `STORED` - File confirmed on home server, checksum verified
+- `PROCESSING` - Background asset generation in progress
+- `PROCESSED` - All derived assets (thumbnails, previews, EXIF) ready
 
-### Phase 3: Derived Assets
+**Note**: `STORED` state deferred to Phase 8. Originals remain in temp storage.
 
-**No new states** - uses existing `PROCESSING` → `PROCESSED`
-
-### Phase 4: ML Pipeline
+### Phase 3-7: Features & Intelligence
 
 **Uses existing states**: `PROCESSING` → `PROCESSED`
 
-### Phase 5: Search & Retrieval
+- Authentication & Access Control (Phase 3)
+- Projects & Sharing (Phase 4)
+- Admin Control Plane (Phase 5)
+- ML Pipeline - Intelligence (Phase 6)
+- Hardening & Maintenance (Phase 7)
 
-**No new states** - operates on `PROCESSED` images
+### Phase 8: Home Server Integration (NEW)
+
+**New State**:
+- `STORED` - File moved to home server, checksum verified
+
+**Behavior**:
+- Images in `PROCESSED` state are eligible for home server offload
+- Offload is asynchronous and non-blocking
+- Temp file cleaned up after successful home server confirmation
 
 ## State Definitions
 
@@ -71,31 +101,33 @@ FAILED → UPLOADED (retry from beginning)
 
 ### INGESTED
 - **Meaning**: File safely written to temporary cloud storage + metadata stored in database
-- **Duration**: Minutes to hours (until home server offload)
+- **Duration**: Minutes to hours (until processing completes)
 - **Location**: Cloud temporary filesystem (`/tmp/ingest/`)
-- **Next States**: `STORED` (Phase 2), `FAILED`
-- **Introduced**: Phase 1
-
-### STORED
-- **Meaning**: File confirmed on home server, checksum verified, temp file can be cleaned
-- **Duration**: Indefinite (until processing starts)
-- **Location**: Home server filesystem (canonical)
 - **Next States**: `PROCESSING`, `FAILED`
-- **Introduced**: Phase 2
+- **Introduced**: Phase 1
+- **Note**: In Phase 8, this will transition to `STORED` before `PROCESSING`
 
 ### PROCESSING
-- **Meaning**: Background ML pipeline running (thumbnails, EXIF, face detection, embeddings)
-- **Duration**: Minutes to hours (depending on ML complexity)
-- **Location**: Home server (originals) + Cloud (derived assets)
+- **Meaning**: Background pipeline running (thumbnails, previews, EXIF)
+- **Duration**: Seconds to minutes (depending on image size)
+- **Location**: Cloud temp storage
 - **Next States**: `PROCESSED`, `FAILED`
-- **Introduced**: Phase 4
+- **Introduced**: Phase 2
 
 ### PROCESSED
-- **Meaning**: All processing complete, image ready for search and retrieval
+- **Meaning**: All processing complete, image ready for display
+- **Duration**: Indefinite (until Phase 8 offload)
+- **Location**: Cloud temp storage (originals + derived assets)
+- **Next States**: `STORED` (Phase 8), None (terminal for Phases 2-7)
+- **Introduced**: Phase 2
+
+### STORED (Phase 8 Only)
+- **Meaning**: File confirmed on home server, checksum verified, temp file cleaned
 - **Duration**: Indefinite (terminal state)
-- **Location**: Home server (originals) + Cloud (thumbnails, previews, embeddings)
+- **Location**: Home server filesystem (canonical)
 - **Next States**: None (terminal)
-- **Introduced**: Phase 4
+- **Introduced**: Phase 8
+- **Note**: This state is only reachable after Phase 8 implementation
 
 ### FAILED
 - **Meaning**: Unrecoverable error occurred, needs investigation or retry
@@ -117,18 +149,29 @@ FAILED → UPLOADED (retry from beginning)
 ### Validation
 
 ```typescript
-// Complete lifecycle transitions
-const LIFECYCLE_TRANSITIONS: Record<ImageStatus, ImageStatus[]> = {
+// Complete lifecycle transitions (Phases 1-7)
+const LIFECYCLE_TRANSITIONS_PHASES_1_7: Record<ImageStatus, ImageStatus[]> = {
   UPLOADED: ['INGESTED', 'FAILED'],
-  INGESTED: ['STORED', 'FAILED'],
-  STORED: ['PROCESSING', 'FAILED'],
+  INGESTED: ['PROCESSING', 'FAILED'],
   PROCESSING: ['PROCESSED', 'FAILED'],
-  PROCESSED: [], // Terminal state
+  PROCESSED: [], // Terminal state for Phases 2-7
+  STORED: [], // Not used until Phase 8
   FAILED: ['UPLOADED'], // Retry from beginning
 };
 
-function validateTransition(from: ImageStatus, to: ImageStatus): void {
-  const allowed = LIFECYCLE_TRANSITIONS[from] || [];
+// Complete lifecycle transitions (With Phase 8)
+const LIFECYCLE_TRANSITIONS_FULL: Record<ImageStatus, ImageStatus[]> = {
+  UPLOADED: ['INGESTED', 'FAILED'],
+  INGESTED: ['PROCESSING', 'FAILED'],
+  PROCESSING: ['PROCESSED', 'FAILED'],
+  PROCESSED: ['STORED', 'FAILED'], // Phase 8 transition
+  STORED: [], // Terminal state
+  FAILED: ['UPLOADED'], // Retry from beginning
+};
+
+function validateTransition(from: ImageStatus, to: ImageStatus, phase8Enabled: boolean = false): void {
+  const transitions = phase8Enabled ? LIFECYCLE_TRANSITIONS_FULL : LIFECYCLE_TRANSITIONS_PHASES_1_7;
+  const allowed = transitions[from] || [];
   if (!allowed.includes(to)) {
     throw new Error(
       `Invalid lifecycle transition: ${from} → ${to}. ` +
@@ -138,89 +181,50 @@ function validateTransition(from: ImageStatus, to: ImageStatus): void {
 }
 ```
 
-## Lifecycle Implementation
+## Phase-Specific Behaviors
 
-### Database Schema
-
-```prisma
-model Image {
-  id        String      @id @default(cuid())
-  status    ImageStatus // Enum
+### Phase 2-7 Behavior (Cloud Only)
+```typescript
+// OFFLOAD_ORIGINAL handler (simplified)
+async function handleOffloadOriginal(imageId: string, tempPath: string): Promise<void> {
+  // Skip home server offload - not implemented yet
+  await prisma.image.update({
+    where: { id: imageId },
+    data: { status: 'PROCESSING' }
+  });
   
-  // Timestamps for each state
-  uploadedAt   DateTime?
-  ingestedAt   DateTime?
-  storedAt     DateTime?
-  processingAt DateTime?
-  processedAt  DateTime?
-  failedAt     DateTime?
-  
-  // State-specific data
-  tempPath     String?   // INGESTED only
-  homePath     String?   // STORED+
-  checksum     String    @unique
-  
-  // Metadata
-  mimeType  String
-  width     Int
-  height    Int
-  sizeBytes Int
-  
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  
-  @@index([status])
-  @@index([checksum])
-}
-
-enum ImageStatus {
-  UPLOADED
-  INGESTED
-  STORED
-  PROCESSING
-  PROCESSED
-  FAILED
+  // Enqueue derived asset jobs
+  await enqueueThumbnailJob(imageId, tempPath);
+  await enqueuePreviewJob(imageId, tempPath);
+  await enqueueExifJob(imageId, tempPath);
 }
 ```
 
-### State Transition Function
-
+### Phase 8 Behavior (Home Server Integration)
 ```typescript
-class ImageLifecycle {
-  static async transition(
-    imageId: string,
-    toStatus: ImageStatus
-  ): Promise<void> {
-    const image = await prisma.image.findUnique({
-      where: { id: imageId },
-    });
-    
-    if (!image) {
-      throw new Error(`Image not found: ${imageId}`);
-    }
-    
-    // Validate transition
-    validateTransition(image.status, toStatus);
-    
-    // Prepare update data
-    const updateData: any = {
-      status: toStatus,
-      updatedAt: new Date(),
-    };
-    
-    // Set timestamp for new state
-    const timestampField = `${toStatus.toLowerCase()}At`;
-    updateData[timestampField] = new Date();
-    
-    // Perform atomic update
-    await prisma.image.update({
-      where: { id: imageId },
-      data: updateData,
-    });
-    
-    // Log transition
-    console.log(`[Lifecycle] ${image.id}: ${image.status} → ${toStatus}`);
+// Enhanced OFFLOAD_ORIGINAL handler
+async function handleOffloadOriginalPhase8(imageId: string, tempPath: string): Promise<void> {
+  // Stream file to home server
+  await streamToHomeServer(tempPath, homeServerPath);
+  
+  // Verify checksum
+  const verified = await verifyChecksum(homeServerPath, expectedChecksum);
+  if (!verified) {
+    throw new Error('Checksum mismatch after home server transfer');
   }
+  
+  // Update status to STORED
+  await prisma.image.update({
+    where: { id: imageId },
+    data: { 
+      status: 'STORED',
+      homePath: homeServerPath,
+      storedAt: new Date()
+    }
+  });
+  
+  // Clean up temp file
+  await fs.unlink(tempPath);
 }
 ```
 
@@ -238,15 +242,15 @@ class ImageLifecycle {
    - Checksum computation error
    - Database write failure
 
-3. **Offload Failures** (STORED → FAILED)
+3. **Processing Failures** (PROCESSING → FAILED)
+   - Asset generation crash
+   - Image corruption
+   - Resource exhaustion
+
+4. **Home Server Failures** (PROCESSED → FAILED) - Phase 8 Only
    - Home server unavailable
    - Network timeout
    - Checksum mismatch
-
-4. **Processing Failures** (PROCESSING → FAILED)
-   - ML pipeline crash
-   - Image corruption
-   - Resource exhaustion
 
 ### Recovery Procedures
 
@@ -304,58 +308,23 @@ GROUP BY DATE(failedAt);
    AND processingAt < NOW() - INTERVAL '1 hour';
    ```
 
-3. **Failure Rate**
+3. **Processing Time**
    ```sql
-   -- Failure rate by day
+   -- Average time from INGESTED to PROCESSED
    SELECT 
-     DATE(createdAt) as date,
-     COUNT(*) as total,
-     SUM(CASE WHEN status = 'FAILED' THEN 1 ELSE 0 END) as failed,
-     ROUND(100.0 * SUM(CASE WHEN status = 'FAILED' THEN 1 ELSE 0 END) / COUNT(*), 2) as failure_rate
+     AVG(EXTRACT(EPOCH FROM (processedAt - ingestedAt))) as avg_seconds
    FROM images
-   GROUP BY DATE(createdAt)
-   ORDER BY date DESC;
+   WHERE status = 'PROCESSED';
    ```
 
-## Audit Trail
-
-### Status History
-
-```prisma
-model ImageStatusHistory {
-  id        String   @id @default(cuid())
-  imageId   String
-  fromStatus ImageStatus
-  toStatus   ImageStatus
-  timestamp  DateTime @default(now())
-  triggeredBy String  // 'system' or userId
-  
-  image Image @relation(fields: [imageId], references: [id])
-  
-  @@index([imageId])
-  @@index([timestamp])
-}
-```
-
-### Logging Transitions
-
-```typescript
-async function logStatusTransition(
-  imageId: string,
-  fromStatus: ImageStatus,
-  toStatus: ImageStatus,
-  triggeredBy: string = 'system'
-): Promise<void> {
-  await prisma.imageStatusHistory.create({
-    data: {
-      imageId,
-      fromStatus,
-      toStatus,
-      triggeredBy,
-    },
-  });
-}
-```
+4. **Home Server Sync Status** (Phase 8)
+   ```sql
+   -- Images awaiting Phase 8 offload
+   SELECT COUNT(*) as pending_offload
+   FROM images
+   WHERE status = 'PROCESSED' 
+   AND homePath IS NULL;
+   ```
 
 ## Best Practices
 
@@ -368,6 +337,7 @@ async function logStatusTransition(
 - ✅ Handle failures explicitly
 - ✅ Monitor stuck images
 - ✅ Implement retry logic
+- ✅ **Design for Phase 8 compatibility even if not yet implemented**
 
 ### DON'T
 
@@ -382,10 +352,12 @@ async function logStatusTransition(
 ## References
 
 - **Phase 1 Contracts**: `.ai/contracts/phase-1-ingestion.md`
+- **Phase 2 Contracts**: `.ai/contracts/phase-2-processing.md`
 - **Global Rules**: `.ai/rules/global.md`
 - **Lifecycle Rules**: `.ai/rules/lifecycle.md`
 - **Async Patterns**: `.ai/skills/domain-knowledge/async-patterns.md`
+- **TODO**: `TODO.md` (contains phase roadmap)
 
 ---
 
-**Remember**: The lifecycle is not optional. Every image must follow this exact flow.
+**Remember**: The lifecycle is not optional. Every image must follow this exact flow. Phase 8 (Home Server) is an optional enhancement that can be added later without breaking the core functionality.

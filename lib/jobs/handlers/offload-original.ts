@@ -1,67 +1,51 @@
-// Phase 2: Offload Original Handler
-// Moves image from temp storage to permanent storage and enqueues derived asset jobs
+// Phase 2: Offload Original Handler (Simplified)
+// NOTE: Home server integration moved to Phase 8
+// This handler now skips file movement and just enqueues derived asset jobs
+// Original files remain in temp storage until Phase 8
 
-import fs from 'fs/promises';
-import path from 'path';
 import prisma from '@/lib/prisma';
 import { enqueueThumbnailJob, enqueuePreviewJob, enqueueExifJob } from '@/lib/jobs/queue';
 
-const STORAGE_DIR = process.env.STORAGE_DIR || '/tmp/storage';
-
 /**
- * Offload original image to permanent storage
- * Then enqueue thumbnail and preview generation jobs
+ * Simplified Offload Handler (Phase 2)
+ * 
+ * Since home server integration is deferred to Phase 8, this handler:
+ * 1. Skips actual file movement (temp file stays in place)
+ * 2. Updates image status to PROCESSING
+ * 3. Enqueues derived asset generation jobs (thumbnails, previews, EXIF)
+ * 
+ * In Phase 8, this will be enhanced to:
+ * - Stream file to home server
+ * - Verify checksum after transfer
+ * - Update status to STORED after confirmation
  */
 export async function handleOffloadOriginal(payload: any, jobId: string): Promise<void> {
-  const { imageId, tempPath, checksum } = payload;
+  const { imageId, tempPath } = payload;
 
   console.log(`[Offload Handler] Processing image: ${imageId}`);
+  console.log(`[Offload Handler] NOTE: Home server offload deferred to Phase 8`);
+  console.log(`[Offload Handler] Temp file remains at: ${tempPath}`);
 
-  // 1. Ensure storage directory exists
-  await fs.mkdir(STORAGE_DIR, { recursive: true });
-
-  // 2. Determine permanent storage path (deterministic, based on checksum)
-  const extension = path.extname(tempPath);
-  const storagePath = path.join(STORAGE_DIR, 'originals', `${checksum}${extension}`);
-  const storageDir = path.dirname(storagePath);
-
-  await fs.mkdir(storageDir, { recursive: true });
-
-  // 3. Move temp file to permanent storage (idempotent - safe to regenerate)
-  console.log(`[Offload Handler] Moving temp file: ${tempPath} → ${storagePath}`);
-
-  try {
-    await fs.rename(tempPath, storagePath);
-  } catch (error: any) {
-    // If file already exists (previous attempt succeeded), that's OK
-    if (error.code === 'EEXIST') {
-      console.log(`[Offload Handler] File already exists at: ${storagePath}`);
-      // Clean up the temp file if it still exists
-      try {
-        await fs.unlink(tempPath);
-      } catch { }
-    } else {
-      throw error;
-    }
-  }
-
-  // 4. Update image record with permanent path and move to PROCESSING state
+  // Update image record to PROCESSING state
+  // Note: tempPath stays the same (still in temp storage)
   const image = await prisma.image.update({
     where: { id: imageId },
     data: {
-      tempPath: storagePath, // Now points to permanent storage
       status: 'PROCESSING'   // Phase 2: Begin processing
     }
   });
 
-  console.log(`[Offload Handler] Image moved to permanent storage: ${imageId}`);
+  console.log(`[Offload Handler] Image status updated to PROCESSING: ${imageId}`);
 
-  // 5. Enqueue derived asset generation jobs
+  // Enqueue derived asset generation jobs
+  // These will process the temp file and generate thumbnails/previews
   console.log(`[Offload Handler] Enqueueing derived asset jobs: ${imageId}`);
 
-  await enqueueThumbnailJob(imageId, storagePath);
-  await enqueuePreviewJob(imageId, storagePath);
-  await enqueueExifJob(imageId, storagePath);
+  await enqueueThumbnailJob(imageId, tempPath);
+  await enqueuePreviewJob(imageId, tempPath);
+  await enqueueExifJob(imageId, tempPath);
 
   console.log(`[Offload Handler] Job complete: ${imageId}`);
+  console.log(`[Offload Handler] Images will remain in PROCESSING state until all derived assets are generated`);
+  console.log(`[Offload Handler] Home server offload scheduled for Phase 8`);
 }

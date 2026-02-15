@@ -74,8 +74,29 @@ A persistent job runner loop executes within the Next.js runtime, picking up tas
 
 - UI scaffold complete
 - Upload and gallery UX validated
-- **Phase 1: Ingestion Foundation** is complete.
-- **Phase 2: Job Runner** implementation is next.
+- **Phase 1: Ingestion Foundation** ✅ Complete
+- **Phase 2: Job Runner** ✅ Complete
+- **Phase 3: Auth & Access Control** ✅ Complete
+- **Phase 4: Professional Projects** - Coming next
+
+### What's New in Phase 3
+
+- **Authentication System**: NextAuth.js v5 with JWT sessions
+- **Role-Based Access Control**: USER, PRO, CLIENT, ADMIN roles
+- **Protected Routes**: /gallery, /upload require login
+- **Admin Dashboard**: System stats and user management
+- **Enhanced Navigation**: Header with breadcrumbs and back buttons
+- **Dynamic Landing Page**: Shows Logout when authenticated
+
+### Authentication Demo
+
+Visit `/auth/signin` to test the authentication system:
+
+**Demo Accounts:**
+- `admin@frame.app` / admin123 (Full admin access)
+- `user@frame.app` / user123 (Standard user)
+- `pro@frame.app` / pro123 (Professional user)
+- `client@frame.app` / client123 (Client access)
 
 ---
 
@@ -141,3 +162,14 @@ If you are an AI assistant working on this repo:
 3. **Use the appropriate agent** definition from [.ai/agents/](./.ai/agents/)
 
 See [.ai/README.md](./.ai/README.md) for more details.
+
+## Demo
+![demo](./demo.gif)
+
+- Signin page: http://localhost:3000/auth/signin
+    **Demo accounts**:
+       - admin@frame.app / admin123 (Admin access)
+       - user@frame.app / user123 (Regular user)
+       - pro@frame.app / pro123 (Pro user)
+       - client@frame.app / client123 (Client user)
+

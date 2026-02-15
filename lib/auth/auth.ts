@@ -1,7 +1,8 @@
 import NextAuth from 'next-auth'
 import Credentials from 'next-auth/providers/credentials'
+import bcrypt from 'bcryptjs'
 import { Role } from '@prisma/client'
-import { NextResponse } from 'next/server'
+import prisma from '@/lib/prisma'
 
 declare module 'next-auth' {
   interface Session {
@@ -26,8 +27,13 @@ const DEMO_CREDENTIALS: Record<string, { password: string; role: Role; name: str
   'client@frame.app': { password: 'client123', role: 'CLIENT', name: 'Client User' },
 }
 
-// Edge runtime compatible auth config (no Node.js modules)
-const { auth } = NextAuth({
+// This is used by API routes (Node.js runtime with database access)
+export const {
+  handlers: { GET, POST },
+  auth,
+  signIn,
+  signOut,
+} = NextAuth({
   session: {
     strategy: 'jwt',
   },
@@ -53,18 +59,35 @@ const { auth } = NextAuth({
           return null
         }
 
-        // Generate consistent ID using Web Crypto API (edge runtime compatible)
-        const encoder = new TextEncoder()
-        const data = encoder.encode(email)
-        const hashBuffer = await crypto.subtle.digest('SHA-256', data)
-        const hashArray = Array.from(new Uint8Array(hashBuffer))
-        const userId = hashArray.map(b => b.toString(16).padStart(2, '0')).join('').substring(0, 20)
+        try {
+          // Find or create the user in the database
+          let user = await prisma.user.findUnique({
+            where: { email }
+          })
 
-        return {
-          id: userId,
-          email,
-          name: demoAccount.name,
-          role: demoAccount.role,
+          if (!user) {
+            // Create demo user in database
+            const hashedPassword = await bcrypt.hash(password, 10)
+            user = await prisma.user.create({
+              data: {
+                email,
+                name: demoAccount.name,
+                password: hashedPassword,
+                role: demoAccount.role,
+              }
+            })
+            console.log(`[Auth] Created demo user: ${email}`)
+          }
+
+          return {
+            id: user.id,
+            email: user.email,
+            name: user.name,
+            role: user.role,
+          }
+        } catch (error) {
+          console.error('[Auth] Database error:', error)
+          return null
         }
       },
     }),
@@ -86,36 +109,3 @@ const { auth } = NextAuth({
     },
   },
 })
-
-export default auth((req) => {
-  const { nextUrl } = req
-  const isLoggedIn = !!req.auth
-  const userRole = req.auth?.user?.role
-
-  const isAuthRoute = nextUrl.pathname.startsWith('/auth')
-  const isProtectedRoute = 
-    nextUrl.pathname.startsWith('/gallery') ||
-    nextUrl.pathname.startsWith('/upload') ||
-    nextUrl.pathname.startsWith('/admin')
-
-  // Redirect authenticated users away from auth pages
-  if (isAuthRoute && isLoggedIn) {
-    return NextResponse.redirect(new URL('/gallery', nextUrl))
-  }
-
-  // Protect private routes
-  if (isProtectedRoute && !isLoggedIn) {
-    return NextResponse.redirect(new URL('/auth/signin', nextUrl))
-  }
-
-  // Admin route protection
-  if (nextUrl.pathname.startsWith('/admin') && userRole !== 'ADMIN') {
-    return NextResponse.redirect(new URL('/gallery', nextUrl))
-  }
-
-  return NextResponse.next()
-})
-
-export const config = {
-  matcher: ['/((?!api|_next/static|_next/image|favicon.ico).*)'],
-}

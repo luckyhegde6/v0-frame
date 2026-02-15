@@ -1,8 +1,14 @@
-# Phase 2 Implementation Complete
+# Phase 2 Implementation
 
-**Status**: ✅ COMPLETE  
-**Date**: 2026-01-30  
-**Version**: 1.0.0
+**Status**: 🔄 UPDATED  
+**Date**: 2026-02-15  
+**Version**: 2.0.0
+
+> [!IMPORTANT]
+> **MAJOR UPDATE**: Home server integration has been moved to Phase 8.
+> Phase 2 now focuses exclusively on cloud-based asset processing.
+> The OFFLOAD_ORIGINAL handler has been simplified to skip file movement.
+> Original files remain in temporary storage until Phase 8.
 
 ---
 
@@ -23,9 +29,14 @@
   - Batch processing (configurable batch size)
 
 ### 3. Job Handlers (✅)
-- ✅ **OFFLOAD_ORIGINAL**: Moves image from temp to permanent storage, enqueues asset jobs
+- ✅ **OFFLOAD_ORIGINAL**: Simplified handler - marks image as PROCESSING and enqueues asset jobs (file movement deferred to Phase 8)
 - ✅ **THUMBNAIL_GENERATION**: Creates thumbnails at sizes [64, 128, 256, 512]px
 - ✅ **PREVIEW_GENERATION**: Creates web-optimized preview (max 2000px, JPEG quality 85)
+
+> [!NOTE]
+> The OFFLOAD_ORIGINAL handler no longer moves files to permanent storage.
+> It simply transitions the image to PROCESSING state and enqueues derived asset jobs.
+> Home server integration is now Phase 8.
 
 ### 4. Server Initialization (✅)
 - ✅ Created `/lib/server/initialize.ts`
@@ -52,23 +63,30 @@
 
 ---
 
-## Image Lifecycle (Phase 2)
+## Image Lifecycle (Phase 2 - Updated)
 
 ```
-UPLOADED → INGESTED → PROCESSING → STORED
+UPLOADED → INGESTED → PROCESSING → PROCESSED
                     ↓
                   (Jobs)
-                  - OFFLOAD_ORIGINAL
+                  - OFFLOAD_ORIGINAL (simplified)
                   - THUMBNAIL_GENERATION
                   - PREVIEW_GENERATION
+                  - EXIF_ENRICHMENT
 ```
+
+> [!NOTE]
+> **STORED state deferred to Phase 8.**
+> Originals remain in temporary storage during Phase 2.
+> All derived assets (thumbnails, previews) are generated in the cloud.
 
 ### State Transitions
 1. **UPLOADED**: File received by API
 2. **INGESTED**: Temp file written, metadata extracted
-3. **PROCESSING**: Offload job running, assets being generated
-4. **STORED**: Original + all derived assets ready
-5. **FAILED**: Unrecoverable error (can happen at any state)
+3. **PROCESSING**: Asset generation jobs running (thumbnails, previews, EXIF)
+4. **PROCESSED**: All derived assets ready (thumbnails, previews, EXIF extracted)
+5. **STORED**: Original moved to home server (**Phase 8 only**)
+6. **FAILED**: Unrecoverable error (can happen at any state)
 
 ---
 
@@ -127,9 +145,12 @@ app/
 
 ### Environment Variables
 ```bash
-STORAGE_DIR=/tmp/storage     # Base directory for derived assets
+STORAGE_DIR=/tmp/storage     # Base directory for derived assets (cloud temp storage)
 API_BASE=http://localhost:3000 # API base URL for server actions
 ```
+
+> [!NOTE]
+> Storage directory is temporary cloud storage. Home server storage (Phase 8) not yet implemented.
 
 ### Job Runner Settings
 - **Batch size**: 5 jobs per poll (configurable)
@@ -235,16 +256,40 @@ curl http://localhost:3000/api/admin/jobs/[jobId]
 
 ## What's Next (Phase 3+)
 
-- Authentication & access control
-- Multi-tenancy / projects
-- ML features (face detection, embeddings)
-- Full-text search
-- Manual job control (retry, cancel)
-- Performance optimization
-- Storage backends (S3, GCS, etc.)
+- **Phase 3**: Authentication & access control
+- **Phase 4**: Multi-tenancy / projects
+- **Phase 5**: Manual job control (retry, cancel)
+- **Phase 6**: ML features (face detection, embeddings)
+- **Phase 7**: Full-text search, Performance optimization
+- **Phase 8**: Home Server Integration (storage backends, home server offload)
 
 ---
 
+## Phase 8 Migration Path
+
+When ready to implement home server integration (Phase 8):
+
+1. **Enhance OFFLOAD_ORIGINAL handler** to:
+   - Stream temp file → home server filesystem
+   - Verify checksum after transfer
+   - Update status to STORED after confirmation
+   - Clean up temp file
+
+2. **Add Home Server storage API**:
+   - Secure upload endpoint
+   - Checksum verification
+   - Health check endpoints
+
+3. **Update Image Lifecycle**:
+   - Add STORED state transition after PROCESSED
+   - Track home server path in database
+
+4. **Backwards Compatibility**:
+   - All existing PROCESSED images remain valid
+   - Phase 8 offload is optional per-image
+   - System works without home server
+
 ## Questions?
 
-See `.ai/contracts/phase-2-processing.md` for detailed requirements.
+See `.ai/contracts/phase-2-processing.md` for detailed requirements.  
+See `TODO.md` for updated phase roadmap including Phase 8.

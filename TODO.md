@@ -1,9 +1,11 @@
 # TODO — Photo Management System (FRAME)
 
 This file defines the execution roadmap for FRAME.
-Work MUST proceed in phases. The single source of truth is the Home Server.
-The goal is not feature velocity — it is system correctness,
+Work MUST proceed in phases. The goal is not feature velocity — it is system correctness,
 reliability, and long-term maintainability.
+
+**NOTE**: Home Server integration has been moved to Phase 8 (Final Phase).
+Phase 2-7 now operate entirely within the cloud/temporary storage environment.
 
 ---
 
@@ -55,64 +57,102 @@ Status: ✅ COMPLETE
 - [x] Add logging (per contract §9)
 - [x] Ensure temp files are NOT treated as durable
 - [x] **Prisma**: Define `ImageStatus` (UPLOADED, INGESTED, FAILED) and base `Image` model
-- [x] **Storage**: Implement streaming file storage on the home server
+- [x] **Storage**: Implement streaming file storage on temporary filesystem
 - [x] **Upload API**: Contract-compliant implementation (streaming, metadata extraction, checksum)
 - [x] **Jobs**: Job enqueue logic (stubbed/basic)
 
 ---
 
-## PHASE 2 — Job Runner and Home Server Offload (SOURCE OF TRUTH)
+## PHASE 2 — Job Runner and Asset Processing (LOCAL STORAGE)
 
 Status: ⏳ IN PROGRESS
 
 > [!IMPORTANT]
-> **All Phase 1 work must comply with the authoritative Phase 1 Ingestion Contracts.**  
-> See: [`.ai/contracts/phase-1-ingestion.md`](./.ai/contracts/phase-1-ingestion.md)
+> **Phase 2 now focuses on cloud/local asset processing only.**
+> Home Server offload has been moved to Phase 8.
+> All processing happens in the cloud/temporary storage environment.
 
 ### Goals
 - Automatically generate web-optimized previews and thumbnails for all ingested images.
 - Improve gallery UX by loading optimized assets instead of originals.
-- Preserve lossless originals while providing a snappy interface.
+- Establish robust background job processing infrastructure.
+- Preserve lossless originals in temporary storage while providing a snappy interface.
 
 ### Tasks
-- [ ] **Metadata**: Implement full EXIF metadata extraction job
-- [ ] **Thumbnails**: Background thumbnail generation (multiple sizes)
-- [ ] **Previews**: Compressed preview generation (web-optimized)
-- [ ] **Gallery**: Update UI to load derived assets preferentially
-- [ ] Define home server storage API (private network only)
-- [ ] Implement async offload worker
-- [ ] Stream temp file → home filesystem
-- [ ] Verify checksum before delete
-- [ ] Delete temp file only after confirmation
-- [ ] Handle retries and backoff
-- [ ] Update image status to STORED
+- [ ] **Job Runner Infrastructure**
+  - [ ] Database-backed job persistence
+  - [ ] Advisory locking mechanism
+  - [ ] Retry logic with exponential backoff
+  - [ ] Polling loop with configurable batch size
+  - [ ] Error handling and dead letter queue
+  
+- [ ] **OFFLOAD_ORIGINAL Handler (Simplified)**
+  - [ ] Skip actual file movement (no home server yet)
+  - [ ] Mark image as PROCESSING state
+  - [ ] Enqueue derived asset generation jobs
+  - [ ] Keep temp file in place (will move in Phase 8)
+  
+- [ ] **THUMBNAIL_GENERATION Handler**
+  - [ ] Generate multiple thumbnail sizes (64, 128, 256, 512px)
+  - [ ] Store in deterministic paths
+  - [ ] Use Sharp for high-quality resizing
+  
+- [ ] **PREVIEW_GENERATION Handler**
+  - [ ] Generate web-optimized preview (max 2000px)
+  - [ ] JPEG quality 85 with progressive encoding
+  - [ ] Store in deterministic path
+  
+- [ ] **EXIF_ENRICHMENT Handler**
+  - [ ] Extract full EXIF metadata
+  - [ ] Parse GPS coordinates
+  - [ ] Extract camera/lens information
+  - [ ] Store in database
+  
+- [ ] **Gallery Integration**
+  - [ ] Update UI to load thumbnails/previews
+  - [ ] Add processing status indicators
+  - [ ] Implement polling for processing updates
+  
+- [ ] **Admin APIs**
+  - [ ] `GET /api/admin/jobs` - List jobs with filtering
+  - [ ] `GET /api/admin/jobs/:id` - View job details
 
 ---
 
 ## PHASE 3 — Auth & Access Control
-Status: ⏳ PENDING
+Status: ✅ COMPLETE
 
 ### Goals
 - Secure the platform with robust authentication and granular RBAC (Role Based Access Control).
 - Ensure resource-level isolation (users only see their own images).
 - Protect the filesystem and administrative APIs.
 
-### Tasks
-- [ ] EXIF enrichment
-- [ ] Face detection (bbox + embeddings)
-- [ ] Object & scene detection
-- [ ] Semantic image embeddings
-- [ ] Persist vectors in pgvector
-- [ ] Status transition to PROCESSED
-- [ ] Generate thumbnails (multiple sizes)
-- [ ] Generate compressed preview (JPEG/PNG)
-- [ ] Store derived assets in cloud
-- [ ] Gallery loads thumbnails only
-- [ ] Image detail loads preview only
-- [ ] Explicit “Download Original” action
-- [ ] **Roles**: Implement USER / PRO / CLIENT / ADMIN role model
-- [ ] **Auth**: Integrate session management (NextAuth or custom provider)
-- [ ] **Isolation**: Route-level and resource-level access control
+### Tasks Completed
+- [x] **Roles**: Implement USER / PRO / CLIENT / ADMIN role model in Prisma schema
+- [x] **Auth**: Integrate NextAuth.js v5 with Credentials provider
+  - [x] Create auth API routes
+  - [x] Configure JWT sessions with role data
+  - [x] Create middleware for route protection
+- [x] **UI**: Create authentication pages and components
+  - [x] Signin page with demo accounts
+  - [x] User navigation dropdown
+  - [x] Update gallery navigation
+- [x] **Isolation**: Route-level and resource-level access control
+  - [x] Middleware protects /gallery, /upload routes
+  - [x] Admin-only protection for /admin routes
+  - [x] Update API routes to filter by userId
+  - [x] Add userId to Image records
+- [x] **Navigation**: Enhanced UI/UX
+  - [x] Header component with breadcrumbs
+  - [x] Back button navigation
+  - [x] Dynamic landing page (Sign In vs Logout)
+  - [x] Admin dashboard with stats
+
+### Demo Accounts
+- admin@frame.app / admin123 (ADMIN)
+- user@frame.app / user123 (USER)
+- pro@frame.app / pro123 (PRO)
+- client@frame.app / client123 (CLIENT)
 
 ---
 
@@ -143,14 +183,15 @@ Status: ⏳ PENDING
 - [ ] **Dashboard**: centralized UI for system health and job status
 - [ ] **Swagger**: Interactive API documentation
 - [ ] **Analytics**: Server stats, disk usage, and processing metrics
+- [ ] **Manual Job Control**: Retry, cancel, and monitor jobs
 
 ---
 
-## PHASE 6 — Intelligence (Home Server Only)
+## PHASE 6 — Intelligence (ML Pipeline)
 Status: ⏳ PENDING
 
 ### Goals
-- Add "intelligence" (ML/AI) to the photo library without cloud dependencies.
+- Add "intelligence" (ML/AI) to the photo library.
 - Enable semantic search and face-based organization.
 - Index all images into a vector database for natural language retrieval.
 
@@ -158,11 +199,8 @@ Status: ⏳ PENDING
 - [ ] **Faces**: Face detection and face-grouping jobs
 - [ ] **Objects**: AI object tagging and scene classification
 - [ ] **Vectors**: Semantic image embeddings stored in pgvector
-- [ ] Text-based semantic search
-- [ ] Similar-image search
-- [ ] Filter by tags, faces, date
-- [ ] Grouped downloads
-- [ ] ZIP streaming (no buffering)
+- [ ] **Search**: Text-based semantic search
+- [ ] **Similarity**: Similar-image search
 
 ---
 
@@ -183,13 +221,102 @@ Status: ⏳ PENDING
 - [ ] v0 Sync verification (ensure manually added logic isn't broken by UI updates)
 - [ ] README + architecture docs polish
 - [ ] **Cleanup**: Automated cleanup of failed/stray temp files
-- [ ] **Backups**: Database and original image backup strategy
-- [ ] **Performance**: Optimization for high-latency storage (HDD support)
+- [ ] **Backups**: Database backup strategy
+- [ ] **Performance**: Optimization for cloud storage
+
+---
+
+## PHASE 8 — Home Server Integration (FINAL PHASE) ⭐
+
+Status: ⏳ PENDING  
+**Prerequisites**: Home server hardware must be ready and configured
+
+### Goals
+- Integrate the home server as the final destination for original images.
+- Provide long-term, durable storage for lossless originals.
+- Enable hybrid cloud + home server architecture.
+- Move originals from temporary cloud storage to permanent home server storage.
+
+### Tasks
+- [ ] **Home Server Setup**
+  - [ ] Install and configure home server hardware
+  - [ ] Set up private networking between cloud and home server
+  - [ ] Configure secure API endpoints on home server
+  - [ ] Set up VPN or tunnel (Tailscale, WireGuard, etc.)
+  
+- [ ] **Storage API**
+  - [ ] Define home server storage API (private network only)
+  - [ ] Implement secure upload endpoint on home server
+  - [ ] Implement checksum verification endpoint
+  - [ ] Set up authentication between cloud and home server
+  
+- [ ] **Enhanced OFFLOAD_ORIGINAL Handler**
+  - [ ] Stream temp file → home server filesystem
+  - [ ] Verify checksum after transfer
+  - [ ] Implement retry logic with exponential backoff
+  - [ ] Handle home server availability issues gracefully
+  - [ ] Update image status to STORED after confirmation
+  
+- [ ] **Sync Monitoring**
+  - [ ] Track sync status for each image
+  - [ ] Display home server connectivity status in UI
+  - [ ] Implement health checks for home server
+  - [ ] Alert on sync failures
+  
+- [ ] **Backup Strategy**
+  - [ ] Configure automated backups from home server
+  - [ ] Set up redundant storage (RAID, backup drives)
+  - [ ] Test disaster recovery procedures
+
+### Notes
+- This phase is intentionally deferred to allow the system to be fully functional
+  in the cloud environment first.
+- Originals remain in temporary storage during Phases 2-7.
+- Once implemented, images will flow: INGESTED → PROCESSING → PROCESSED → STORED (home server)
+- The system is designed to work without home server integration (Phase 8 is optional).
+
+---
+
+## UPDATED Image Lifecycle (Phases 1-7)
+
+```
+UPLOADED
+  ↓
+INGESTED (temporary cloud storage)
+  ↓
+PROCESSING (background asset generation)
+  ├─→ Thumbnail generation
+  ├─→ Preview generation  
+  ├─→ EXIF enrichment
+  └─→ All jobs complete
+      ↓
+  PROCESSED (all assets ready in cloud)
+```
+
+## COMPLETE Image Lifecycle (With Phase 8)
+
+```
+UPLOADED
+  ↓
+INGESTED (temporary cloud storage)
+  ↓
+PROCESSING (background asset generation)
+  ├─→ Thumbnail generation
+  ├─→ Preview generation
+  ├─→ EXIF enrichment
+  └─→ All jobs complete
+      ↓
+  PROCESSED (all assets ready in cloud)
+      ↓
+  [Phase 8: Home Server Integration]
+  STORED (original moved to home server)
+```
 
 ---
 
 ## RULES
-- The Home Server is the absolute system of record.
+- Feature velocity is secondary to system design correctness.
 - **Never** buffer large files; always stream.
 - Jobs must be idempotent and survive server restarts.
-- Feature velocity is secondary to system design correctness.
+- Phase 8 (Home Server) is optional - the system works without it.
+- All phases 2-7 must function independently of home server availability.

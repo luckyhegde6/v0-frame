@@ -4,7 +4,8 @@ import React from "react"
 
 import { useState, useCallback, useEffect } from 'react'
 import Link from 'next/link'
-import { Upload, X, ImageIcon, FileUp } from 'lucide-react'
+import { Upload, X, ImageIcon, FileUp, ChevronRight, Home, ArrowLeft } from 'lucide-react'
+import { UserNav } from '@/components/user-nav'
 
 interface UploadedFile {
   id: string
@@ -139,20 +140,45 @@ export default function UploadPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Navigation */}
-      <nav className="flex items-center justify-between px-6 py-4 border-b border-border">
-        <Link href="/" className="text-2xl font-bold tracking-tighter">
-          <span className="text-primary">FRAME</span>
-        </Link>
-        <Link href="/gallery" className="text-sm text-foreground/80 hover:text-primary transition-colors">
-          Gallery
-        </Link>
+      {/* Navigation Header */}
+      <nav className="flex items-center justify-between px-6 py-4 border-b border-border sticky top-0 z-40 bg-background/80 backdrop-blur-sm">
+        <div className="flex items-center gap-6">
+          <Link href="/" className="text-2xl font-bold tracking-tighter">
+            <span className="text-primary">FRAME</span>
+          </Link>
+          {/* Breadcrumbs */}
+          <nav className="hidden sm:flex items-center gap-2 text-sm text-muted-foreground">
+            <Link href="/" className="hover:text-primary transition-colors flex items-center gap-1">
+              <Home className="w-4 h-4" />
+            </Link>
+            <ChevronRight className="w-4 h-4" />
+            <Link href="/gallery" className="hover:text-primary transition-colors">
+              Gallery
+            </Link>
+            <ChevronRight className="w-4 h-4" />
+            <span className="text-foreground font-medium">Upload</span>
+          </nav>
+        </div>
+        <div className="flex items-center gap-4">
+          <Link
+            href="/gallery"
+            className="flex items-center gap-2 text-sm text-muted-foreground hover:text-primary transition-colors"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Back to Gallery
+          </Link>
+          <UserNav />
+        </div>
       </nav>
 
+      {/* Page Title Bar */}
+      <div className="border-b border-border px-6 py-3 bg-muted/50">
+        <h1 className="text-xl font-semibold">Upload Images</h1>
+      </div>
+
       {/* Main Content */}
-      <main className="px-6 py-12 max-w-4xl mx-auto">
-        <div className="mb-12">
-          <h1 className="text-4xl font-bold mb-2">Upload Your Images</h1>
+      <main className="px-6 py-8 max-w-4xl mx-auto">
+        <div className="mb-8">
           <p className="text-lg text-foreground/60">
             Start building your gallery. Drag and drop or click to select images.
           </p>

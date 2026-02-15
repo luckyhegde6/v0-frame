@@ -2,10 +2,13 @@
 
 import Link from 'next/link'
 import { useState, useMemo, useEffect } from 'react'
-import { Upload, Grid, List, Loader2, Cloud } from 'lucide-react'
+import { Upload, Grid, List, Loader2, Cloud, ArrowLeft } from 'lucide-react'
 import { GallerySearch } from '@/components/gallery-search'
 import { CollectionManager } from '@/components/collection-manager'
 import { ImageCard } from '@/components/image-card'
+import { UserNav } from '@/components/user-nav'
+import { usePathname } from 'next/navigation'
+import { cn } from '@/lib/utils'
 
 interface GalleryImage {
   id: string
@@ -15,6 +18,18 @@ interface GalleryImage {
   size?: string
   dimensions?: string
   mimeType?: string
+}
+
+function Breadcrumbs() {
+  const pathname = usePathname()
+  
+  return (
+    <nav className="flex items-center gap-2 text-sm text-muted-foreground">
+      <Link href="/" className="hover:text-primary transition-colors">Home</Link>
+      <span>/</span>
+      <span className="text-foreground font-medium">Gallery</span>
+    </nav>
+  )
 }
 
 export default function GalleryPage() {
@@ -84,38 +99,49 @@ export default function GalleryPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Navigation */}
+      {/* Navigation Header */}
       <nav className="flex items-center justify-between px-6 py-4 border-b border-border sticky top-0 z-40 bg-background/80 backdrop-blur-sm">
-        <Link href="/" className="text-2xl font-bold tracking-tighter">
-          <span className="text-primary">FRAME</span>
-        </Link>
+        <div className="flex items-center gap-6">
+          <Link href="/" className="text-2xl font-bold tracking-tighter">
+            <span className="text-primary">FRAME</span>
+          </Link>
+          <Breadcrumbs />
+        </div>
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2 bg-card border border-border rounded-lg p-1">
             <button
               onClick={() => setViewMode('grid')}
-              className={`p-2 rounded transition-colors ${viewMode === 'grid'
-                ? 'bg-primary/20 text-primary'
-                : 'text-foreground/60 hover:text-foreground'
-                }`}
+              className={cn(
+                "p-2 rounded transition-colors",
+                viewMode === 'grid'
+                  ? 'bg-primary/20 text-primary'
+                  : 'text-foreground/60 hover:text-foreground'
+              )}
               title="Grid view"
             >
               <Grid size={20} />
             </button>
             <button
               onClick={() => setViewMode('list')}
-              className={`p-2 rounded transition-colors ${viewMode === 'list'
-                ? 'bg-primary/20 text-primary'
-                : 'text-foreground/60 hover:text-foreground'
-                }`}
+              className={cn(
+                "p-2 rounded transition-colors",
+                viewMode === 'list'
+                  ? 'bg-primary/20 text-primary'
+                  : 'text-foreground/60 hover:text-foreground'
+              )}
               title="List view"
             >
               <List size={20} />
             </button>
           </div>
-          <Link href="/upload" className="px-4 py-2 bg-primary text-primary-foreground rounded-lg font-medium hover:opacity-90 transition-opacity flex items-center gap-2">
+          <Link 
+            href="/upload" 
+            className="px-4 py-2 bg-primary text-primary-foreground rounded-lg font-medium hover:opacity-90 transition-opacity flex items-center gap-2"
+          >
             <Upload size={16} />
-            Upload
+            <span className="hidden sm:inline">Upload</span>
           </Link>
+          <UserNav />
         </div>
       </nav>
 
@@ -179,6 +205,12 @@ export default function GalleryPage() {
                 ) : (
                   <div className="col-span-full py-12 text-center">
                     <p className="text-foreground/60">No images found</p>
+                    <Link 
+                      href="/upload" 
+                      className="inline-block mt-4 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:opacity-90 transition-opacity"
+                    >
+                      Upload your first image
+                    </Link>
                   </div>
                 )}
               </div>
@@ -222,6 +254,12 @@ export default function GalleryPage() {
                 ) : (
                   <div className="py-12 text-center">
                     <p className="text-foreground/60">No images found</p>
+                    <Link 
+                      href="/upload" 
+                      className="inline-block mt-4 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:opacity-90 transition-opacity"
+                    >
+                      Upload your first image
+                    </Link>
                   </div>
                 )}
               </div>

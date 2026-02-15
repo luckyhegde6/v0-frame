@@ -5,14 +5,13 @@ import prisma from '@/lib/prisma';
 import { streamToTempStorage, cleanupTempFile } from '@/lib/storage/temp';
 import { extractBasicMetadata } from '@/lib/image/metadata';
 import { enqueueOffloadJob } from '@/lib/jobs/queue';
-import { getServerSession } from "next-auth/next";
-import { authOptions } from "../auth/[...nextauth]/route";
+import { auth } from "@/lib/auth/auth";
 
 // Phase 1 Ingestion Contract Implementation
 // See: .ai/contracts/phase-1-ingestion.md §2
 
 export async function POST(request: NextRequest) {
-  const session = await getServerSession(authOptions);
+  const session = await auth();
   if (!session?.user) {
     return NextResponse.json({ error: 'Unauthorized', code: 'UNAUTHORIZED' }, { status: 401 });
   }

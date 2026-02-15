@@ -1,9 +1,19 @@
-# Phase 2: Complete Implementation Summary
+# Phase 2: Implementation Summary
 
-**Status**: ✅ COMPLETE & PRODUCTION READY  
-**Date**: January 30, 2026  
-**Duration**: Single session  
-**Files Created/Modified**: 15+  
+**Status**: ✅ COMPLETE (Updated)  
+**Date**: February 15, 2026 (Updated)  
+**Duration**: Multiple sessions  
+**Files Created/Modified**: 15+
+
+> [!IMPORTANT]
+> **MAJOR UPDATE (2026-02-15)**: Home server integration has been moved to Phase 8.
+> Phase 2 now focuses exclusively on cloud-based asset processing.
+> 
+> **Key Changes**:
+> - OFFLOAD_ORIGINAL handler simplified (no file movement)
+> - Originals remain in temp storage
+> - STORED state deferred to Phase 8
+> - New state: PROCESSED (all assets ready in cloud)
 
 ---
 
@@ -180,31 +190,42 @@ Phase 2 of the FRAME image platform has been fully implemented, transforming the
                    │
           ┌────────▼──────────────────┐
           │  Handler Execution        │
-          │  (with error handling)    │
+          │  (Simplified - Phase 2)   │
           └────────┬──────────────────┘
                    │
-        ┌──────────┼──────────┬──────────────┐
-        │          │          │              │
-        ▼          ▼          ▼              ▼
-    ┌────────┐ ┌─────────┐ ┌──────────┐ ┌──────────┐
-    │Offload │ │Thumbnail│ │Preview   │ │Update DB │
-    │Original│ │Generate │ │Generate  │ │ State    │
-    └────────┘ └─────────┘ └──────────┘ └──────────┘
-        │          │          │              │
-        └──────────┴──────────┴──────────────┘
-                   │
-                   ▼
-          ┌─────────────────────┐
-          │  Image Status API   │
-          │  GET /api/images    │
-          └─────────────────────┘
-                   │
-                   ▼
-          ┌─────────────────────┐
-          │  Frontend Display   │
-          │  (with thumbnails)  │
-          └─────────────────────┘
+         ┌─────────┴──────────┬──────────────┐
+         │                    │              │
+         ▼                    ▼              ▼
+     ┌──────────┐ ┌─────────────┐ ┌─────────────┐
+     │Offload   │ │ Thumbnail   │ │   Preview   │
+     │(Simplified│ │ Generation  │ │ Generation  │
+     │No Move)  │ │ [4 sizes]   │ │ [2000px]    │
+     └──────────┘ └─────────────┘ └─────────────┘
+         │              │              │
+         └──────────────┴──────────────┘
+                    │
+                    ▼
+           ┌─────────────────────┐
+           │  Update to PROCESSED│
+           │  (All assets ready) │
+           └─────────────────────┘
+                    │
+                    ▼
+           ┌─────────────────────┐
+           │  Image Status API   │
+           │  GET /api/images    │
+           └─────────────────────┘
+                    │
+                    ▼
+           ┌─────────────────────┐
+           │  Frontend Display   │
+           │  (with thumbnails)  │
+           └─────────────────────┘
 ```
+
+> [!NOTE]
+> **Phase 2**: Assets generated from temp storage (no home server yet)
+> **Phase 8**: Will add home server offload after PROCESSED state
 
 ---
 
@@ -222,8 +243,8 @@ UPLOADED
 INGESTED
   ↓
   └─→ [Phase 2: Complete]
-      - Offload job runs
-      - Original moved to permanent storage
+      - Offload job runs (simplified)
+      - Status changed to PROCESSING
       - Derived asset jobs enqueued
       ↓
 PROCESSING
@@ -234,14 +255,31 @@ PROCESSING
   ├─→ Preview job runs
   │   - Optimizes for web
   │   - Updates DB
+  ├─→ EXIF enrichment runs
+  │   - Extracts full metadata
+  │   - Updates DB
   │
   └─→ All jobs complete
       ↓
-STORED
-  ├─→ Original + thumbnails + preview ready
+PROCESSED
+  ├─→ Thumbnails + preview + EXIF ready
   ├─→ Fully displayable
+  ├─→ Original still in temp storage
   └─→ Ready for Phase 3+ (ML, search, etc.)
+      ↓
+      [Phase 8: Home Server Integration]
+      - Original moved to home server
+      - Checksum verified
+      - Temp file cleaned
+      ↓
+STORED (Phase 8)
+  └─→ Original confirmed on home server
 ```
+
+> [!IMPORTANT]
+> **Phase 2 Change**: Images now reach PROCESSED state in the cloud.
+> Originals remain in temp storage.
+> **Phase 8**: Will add STORED state after home server offload.
 
 ---
 
@@ -283,7 +321,7 @@ All Phase 2 functionality tested and verified:
 
 ## Production Readiness
 
-### Compliance with Phase 2 Contract
+### Compliance with Phase 2 Contract (Updated)
 
 ✅ **Persistent Job Execution**
 - All jobs stored in database
@@ -302,13 +340,14 @@ All Phase 2 functionality tested and verified:
 
 ✅ **Idempotent Processing**
 - Derived assets safe to regenerate
-- Original files immutable
+- Original files remain immutable in temp storage
 - No duplicate processing
 
-✅ **Local Processing**
+✅ **Cloud-Based Processing**
 - All processing happens in job runner
 - No computation in API routes
 - Proper separation of concerns
+- **Works without home server** (Phase 8 optional)
 
 ✅ **Admin Inspectability**
 - Read-only job inspection
@@ -317,9 +356,9 @@ All Phase 2 functionality tested and verified:
 
 ✅ **Rejection Criteria Met**
 - No processing outside job runner
-- No originals touched
-- No ML features (Phase 3+)
+- No ML features (Phase 6)
 - No in-memory queues
+- **No home server dependency** (moved to Phase 8)
 
 ---
 
@@ -394,11 +433,21 @@ Planned for future phases:
 
 - **Phase 3**: Authentication & Access Control
 - **Phase 4**: Multi-tenancy / Projects
-- **Phase 5**: ML Features (faces, embeddings)
-- **Phase 6**: Full-text Search
-- **Phase 7**: Manual Job Control (retry, cancel)
-- **Phase 8**: Storage Backends (S3, GCS, etc.)
-- **Phase 9**: Performance Optimization
+- **Phase 5**: Admin Control Plane (manual job control, dashboard)
+- **Phase 6**: Intelligence (ML - faces, objects, embeddings)
+- **Phase 7**: Hardening & Maintenance
+- **Phase 8**: Home Server Integration (FINAL PHASE)
+  - Home server hardware setup
+  - Private networking (VPN/tunnel)
+  - Storage API implementation
+  - Enhanced OFFLOAD_ORIGINAL handler
+  - Original file offload to home server
+  - Long-term durability and backups
+
+> [!NOTE]
+> **Phase 8 is now the FINAL phase**, not an intermediate step.
+> This allows the system to be fully functional in the cloud while
+> home server hardware is being prepared.
 
 ---
 
@@ -446,10 +495,26 @@ See `TESTING_PHASE_2.md` for comprehensive test scenarios.
 Phase 2 is complete, tested, and ready for production. The system now has:
 
 ✅ Persistent job queue with DB-backed storage  
-✅ Automatic asset generation (thumbnails, previews)  
+✅ Automatic asset generation (thumbnails, previews, EXIF)  
 ✅ Robust error handling and retry logic  
 ✅ Complete monitoring and admin APIs  
 ✅ Full backward compatibility with Phase 1  
+✅ Cloud-based processing (no home server required)  
 ✅ Comprehensive documentation  
 
-The image platform is now production-grade with professional-quality asset management and processing automation.
+### Major Change (2026-02-15)
+
+**Home server integration has been moved to Phase 8 (Final Phase).**
+
+This means:
+- Original images remain in temporary cloud storage during Phases 2-7
+- The system is fully functional without a home server
+- Asset processing (thumbnails, previews) happens in the cloud
+- Home server offload is now the **capstone feature** of Phase 8
+
+This change allows you to:
+1. Develop and test all features in the cloud environment
+2. Prepare home server hardware on your own timeline
+3. Add home server integration as the final step without breaking changes
+
+The image platform is now production-grade with professional-quality asset management and processing automation - all running in the cloud until you're ready for Phase 8.

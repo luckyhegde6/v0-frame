@@ -2,6 +2,7 @@ import React from "react"
 import type { Metadata } from 'next'
 import { Analytics } from "@vercel/analytics/next"
 import { initializeServer } from '@/lib/server/initialize'
+import { AuthProvider } from '@/components/auth-provider'
 import './globals.css'
 
 // Phase 2: Initialize job runner on server startup
@@ -44,7 +45,9 @@ export default function RootLayout({
   return (
     <html lang="en" className="dark">
       <body className="font-sans antialiased bg-background text-foreground">
-        {children}
+        <AuthProvider>
+          {children}
+        </AuthProvider>
         <Analytics />
       </body>
     </html>
