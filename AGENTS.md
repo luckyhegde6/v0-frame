@@ -1,0 +1,205 @@
+# AGENTS.md - AI Agent Guidelines
+
+This document provides guidelines for AI agents working on this FRAME image gallery application.
+
+## Project Overview
+
+- **Framework**: Next.js 16.1.5 + React 19 + TypeScript
+- **Database**: PostgreSQL (via Prisma ORM)
+- **Styling**: Tailwind CSS v4 + shadcn/ui
+- **Package Manager**: pnpm
+- **Architecture**: Async job-based image processing pipeline
+
+## Build Commands
+
+```bash
+# Development
+pnpm dev                    # Start development server (Next.js)
+pnpm local                  # Full local setup: docker + db + seed + dev
+
+# Build
+pnpm build                  # Production build (includes db:generate)
+
+# Linting
+pnpm lint                   # Run ESLint on entire codebase
+
+# Database
+pnpm db:push                # Push Prisma schema to database
+pnpm db:generate            # Generate Prisma client
+pnpm db:seed                # Run database seeders
+pnpm db:studio              # Open Prisma Studio GUI
+
+# Docker
+pnpm docker:up              # Start PostgreSQL container
+pnpm docker:down            # Stop containers
+pnpm docker:clean           # Remove volumes and orphans
+
+# Installation
+pnpm install                # Install dependencies (auto-runs prisma generate)
+```
+
+## Code Style Guidelines
+
+### TypeScript
+
+- **Strict mode enabled** - Always use proper types, no `any` without justification
+- Use interfaces for props: `interface ComponentProps { ... }`
+- Prefer type inference for simple cases, explicit types for APIs
+- Target: ES6, Module: ESNext
+
+### Imports
+
+```typescript
+// 1. React/Next imports first
+import { useState, useEffect } from 'react'
+import { NextRequest, NextResponse } from 'next/server'
+
+// 2. Third-party libraries
+import { z } from 'zod'
+import { Loader2 } from 'lucide-react'
+
+// 3. Absolute project imports (use @/* alias)
+import prisma from '@/lib/prisma'
+import { cn } from '@/lib/utils'
+import { Button } from '@/components/ui/button'
+
+// 4. Relative imports (only when necessary)
+import { siblingUtil } from './utils'
+```
+
+### Formatting
+
+- **Single quotes** for strings and imports
+- **No semicolons** (except when required)
+- **2 spaces** indentation
+- **Trailing commas** in multi-line objects/arrays
+- Line width: ~100 characters
+
+### Naming Conventions
+
+- **Components**: PascalCase (`ImageCard`, `GalleryPage`)
+- **Functions**: camelCase (`fetchImages`, `handleSubmit`)
+- **Constants**: UPPER_SNAKE_CASE (`API_BASE_URL`)
+- **Files**: kebab-case (`image-card.tsx`, `route.ts`)
+- **Database models**: PascalCase in Prisma, camelCase in code
+- **Environment variables**: UPPER_SNAPE_CASE with appropriate prefix
+
+### React Components
+
+```typescript
+'use client'  // Always add for client components (server is default)
+
+interface ImageCardProps {
+  id: string
+  title: string
+  isLoading?: boolean  // Optional props use ?
+}
+
+export function ImageCard({ id, title, isLoading = false }: ImageCardProps) {
+  // Component logic
+  return (
+    <div className="...">
+      {/* JSX */}
+    </div>
+  )
+}
+```
+
+### API Routes
+
+```typescript
+import { NextRequest, NextResponse } from 'next/server'
+import prisma from '@/lib/prisma'
+
+export async function GET(request: NextRequest) {
+  try {
+    const data = await prisma.model.findMany()
+    return NextResponse.json({ data })
+  } catch (error) {
+    console.error('Operation failed:', error)
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : 'Unknown error' },
+      { status: 500 }
+    )
+  }
+}
+```
+
+### Error Handling
+
+- Always wrap async operations in try/catch
+- Log errors with descriptive context: `console.error('[Context] Error:', error)`
+- Return user-friendly error messages in API responses
+- Use early returns to reduce nesting
+
+### Styling (Tailwind CSS)
+
+- Use `@/lib/utils` `cn()` helper for conditional classes
+- Prefer semantic color tokens: `bg-primary`, `text-foreground`
+- Custom colors defined in `app/globals.css`
+- Primary: `#00D9FF` (cyan)
+- Dark theme is default
+
+```typescript
+// Good
+className={cn(
+  "bg-card border border-border rounded-lg",
+  isActive && "border-primary",
+  className
+)}
+```
+
+### Prisma/Database
+
+- Always use transactions for multi-step operations
+- Include related data with `include` when needed
+- Use proper typing for query results
+
+### Async Patterns
+
+This codebase uses a job queue for background processing:
+- Images flow through states: `UPLOADED` → `PROCESSING` → `STORED`
+- Jobs are processed asynchronously via the job runner
+- Always handle intermediate states in UI
+
+### File Organization
+
+```
+app/                    # Next.js App Router
+  api/                  # API routes
+  page.tsx              # Page components
+  layout.tsx            # Root layout
+  globals.css           # Global styles
+components/             # React components
+  ui/                   # shadcn/ui components
+lib/                    # Utility functions
+  jobs/                 # Job queue & handlers
+  prisma.ts             # Prisma client setup
+prisma/
+  schema.prisma         # Database schema
+```
+
+### Environment Variables
+
+Required in `.env`:
+- `DATABASE_URL` or `POSTGRES_PRISMA_URL` - PostgreSQL connection
+- Check `.env.example` for all required variables
+
+## Agent Principles
+
+1. **Correctness > Features** - Ensure code works before adding features
+2. **Explicit over clever** - Favor clear, readable code
+3. **Fail gracefully** - Handle all error cases
+4. **Async-aware** - Respect the job-based architecture
+5. **Type-safe** - No loose typing without comments explaining why
+
+## Testing (Future)
+
+No test framework is currently configured. If adding tests:
+- Prefer Vitest for unit tests
+- Use Playwright for E2E tests
+- Place tests alongside source files: `Component.test.tsx`
+
+---
+
+**Note**: This is an AI-generated guide. Update it as the codebase evolves.

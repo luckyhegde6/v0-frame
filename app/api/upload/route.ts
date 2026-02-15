@@ -5,11 +5,17 @@ import prisma from '@/lib/prisma';
 import { streamToTempStorage, cleanupTempFile } from '@/lib/storage/temp';
 import { extractBasicMetadata } from '@/lib/image/metadata';
 import { enqueueOffloadJob } from '@/lib/jobs/queue';
+import { auth } from "@/lib/auth/auth";
 
 // Phase 1 Ingestion Contract Implementation
 // See: .ai/contracts/phase-1-ingestion.md §2
 
 export async function POST(request: NextRequest) {
+  const session = await auth();
+  if (!session?.user) {
+    return NextResponse.json({ error: 'Unauthorized', code: 'UNAUTHORIZED' }, { status: 401 });
+  }
+  const userId = session.user.id;
   let tempPath: string | null = null;
   const imageId = crypto.randomUUID();
 
@@ -74,6 +80,7 @@ export async function POST(request: NextRequest) {
         width: metadata.width,
         height: metadata.height,
         sizeBytes: metadata.sizeBytes,
+        userId: userId,
         collections: collectionIds.length > 0
           ? {
             connect: collectionIds.map(id => ({ id }))
@@ -81,8 +88,16 @@ export async function POST(request: NextRequest) {
           : collectionName
             ? {
               connectOrCreate: {
-                where: { name: collectionName },
-                create: { name: collectionName }
+                where: {
+                  name_userId: {
+                    name: collectionName,
+                    userId: userId
+                  }
+                },
+                create: {
+                  name: collectionName,
+                  userId: userId
+                }
               }
             }
             : undefined,
