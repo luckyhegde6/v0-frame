@@ -2,11 +2,12 @@ import { auth } from '@/lib/auth/auth'
 import { redirect } from 'next/navigation'
 import { Header } from '@/components/header'
 import { Shield, Users, Settings, Activity } from 'lucide-react'
+import Link from 'next/link'
 
 export default async function AdminPage() {
   const session = await auth()
 
-  if (!session?.user || session.user.role !== 'ADMIN') {
+  if (!session?.user || !['ADMIN', 'SUPERADMIN'].includes(session.user.role)) {
     redirect('/gallery')
   }
 
@@ -60,7 +61,7 @@ export default async function AdminPage() {
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Admin Role</p>
-                <p className="text-2xl font-bold">Active</p>
+                <p className="text-2xl font-bold">{session.user.role}</p>
               </div>
             </div>
           </div>
@@ -69,29 +70,29 @@ export default async function AdminPage() {
         <h2 className="text-2xl font-bold mb-6">Admin Dashboard</h2>
         
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="p-6 bg-card border border-border rounded-lg hover:border-primary/50 transition-colors cursor-pointer">
+          <Link href="/admin/users" className="p-6 bg-card border border-border rounded-lg hover:border-primary/50 transition-colors cursor-pointer">
             <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center mb-4">
               <Users className="w-6 h-6 text-primary" />
             </div>
             <h3 className="text-lg font-semibold mb-2">Users</h3>
             <p className="text-muted-foreground">Manage user accounts and roles</p>
-          </div>
+          </Link>
 
-          <div className="p-6 bg-card border border-border rounded-lg hover:border-primary/50 transition-colors cursor-pointer">
+          <Link href="/admin/jobs" className="p-6 bg-card border border-border rounded-lg hover:border-primary/50 transition-colors cursor-pointer">
             <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center mb-4">
               <Activity className="w-6 h-6 text-primary" />
             </div>
             <h3 className="text-lg font-semibold mb-2">Jobs</h3>
             <p className="text-muted-foreground">Monitor background job processing</p>
-          </div>
+          </Link>
 
-          <div className="p-6 bg-card border border-border rounded-lg hover:border-primary/50 transition-colors cursor-pointer">
+          <Link href="/admin/system" className="p-6 bg-card border border-border rounded-lg hover:border-primary/50 transition-colors cursor-pointer">
             <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center mb-4">
               <Settings className="w-6 h-6 text-primary" />
             </div>
             <h3 className="text-lg font-semibold mb-2">System</h3>
             <p className="text-muted-foreground">View system health and metrics</p>
-          </div>
+          </Link>
         </div>
 
         <div className="mt-8 p-6 bg-card border border-border rounded-lg">

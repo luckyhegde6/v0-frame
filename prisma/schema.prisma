@@ -9,7 +9,7 @@ datasource db {
   provider = "postgresql"
 }
 
-// Phase 1, 2 & 3: Image Ingestion, Processing and Ownership
+// Phase 1, 2, 3 & 4: Image Ingestion, Processing, Ownership and Projects
 model Image {
   id        String      @id @default(cuid())
   status    ImageStatus
@@ -48,6 +48,7 @@ model Image {
   // Relations
   collections Collection[]
   jobs        Job[]
+  projectImages ProjectImage[]
   
   // Timestamps
   createdAt DateTime    @default(now())
@@ -113,6 +114,8 @@ model User {
   sessions      Session[]
   images        Image[]
   collections   Collection[]
+  projects      Project[]
+  shareTokens   ShareToken[]
 
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
@@ -126,11 +129,73 @@ model VerificationToken {
   @@unique([identifier, token])
 }
 
+// Phase 4: Professional Projects
+model Project {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  
+  // Storage management (in bytes)
+  quotaBytes  Int      @default(10737418240) // 10GB default
+  storageUsed Int      @default(0)
+  
+  // Ownership
+  ownerId     String
+  owner       User     @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  
+  // Relations
+  images      ProjectImage[]
+  shareTokens ShareToken[]
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([name, ownerId])
+  @@index([ownerId])
+}
+
+// Project-Image many-to-many relationship
+model ProjectImage {
+  id        String   @id @default(cuid())
+  projectId String
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  imageId   String
+  image     Image    @relation(fields: [imageId], references: [id], onDelete: Cascade)
+  
+  addedAt   DateTime @default(now())
+
+  @@unique([projectId, imageId])
+  @@index([projectId])
+  @@index([imageId])
+}
+
+// Phase 4: Client Sharing
+model ShareToken {
+  id          String    @id @default(cuid())
+  token       String    @unique
+  projectId   String
+  project     Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  
+  // Token configuration
+  expiresAt   DateTime?
+  maxAccesses Int?
+  accessCount Int       @default(0)
+  
+  // Metadata
+  createdAt   DateTime  @default(now())
+  createdById String
+  createdBy   User      @relation(fields: [createdById], references: [id], onDelete: Cascade)
+  
+  @@index([projectId])
+  @@index([token])
+}
+
 enum Role {
   USER
   PRO
   CLIENT
   ADMIN
+  SUPERADMIN
 }
 
 // Phase 1 & 2: Image Lifecycle States

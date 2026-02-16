@@ -1,6 +1,7 @@
 import React from "react"
 import type { Metadata } from 'next'
 import { Analytics } from "@vercel/analytics/next"
+import { Toaster } from 'sonner'
 import { initializeServer } from '@/lib/server/initialize'
 import { AuthProvider } from '@/components/auth-provider'
 import './globals.css'
@@ -46,6 +47,16 @@ export default function RootLayout({
     <html lang="en" className="dark">
       <body className="font-sans antialiased bg-background text-foreground">
         <AuthProvider>
+          <Toaster 
+            position="top-right"
+            toastOptions={{
+              style: {
+                background: 'hsl(var(--card))',
+                border: '1px solid hsl(var(--border))',
+                color: 'hsl(var(--foreground))',
+              },
+            }}
+          />
           {children}
         </AuthProvider>
         <Analytics />

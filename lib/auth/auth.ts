@@ -1,8 +1,9 @@
 import NextAuth from 'next-auth'
 import Credentials from 'next-auth/providers/credentials'
 import bcrypt from 'bcryptjs'
-import { Role } from '@prisma/client'
 import prisma from '@/lib/prisma'
+
+type Role = 'USER' | 'PRO' | 'CLIENT' | 'ADMIN' | 'SUPERADMIN'
 
 declare module 'next-auth' {
   interface Session {
@@ -19,12 +20,22 @@ declare module 'next-auth' {
 
 import { DefaultSession } from 'next-auth'
 
-// Demo user credentials (passwords are plain text for demo)
+const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'admin@frame.app'
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'admin123'
+
 const DEMO_CREDENTIALS: Record<string, { password: string; role: Role; name: string }> = {
   'admin@frame.app': { password: 'admin123', role: 'ADMIN', name: 'Admin User' },
   'user@frame.app': { password: 'user123', role: 'USER', name: 'Regular User' },
   'pro@frame.app': { password: 'pro123', role: 'PRO', name: 'Pro User' },
   'client@frame.app': { password: 'client123', role: 'CLIENT', name: 'Client User' },
+}
+
+if (ADMIN_EMAIL && ADMIN_PASSWORD) {
+  DEMO_CREDENTIALS[ADMIN_EMAIL] = {
+    password: ADMIN_PASSWORD,
+    role: 'SUPERADMIN',
+    name: 'Super Admin',
+  }
 }
 
 // This is used by API routes (Node.js runtime with database access)
@@ -68,12 +79,13 @@ export const {
           if (!user) {
             // Create demo user in database
             const hashedPassword = await bcrypt.hash(password, 10)
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             user = await prisma.user.create({
               data: {
                 email,
                 name: demoAccount.name,
                 password: hashedPassword,
-                role: demoAccount.role,
+                role: demoAccount.role as any,
               }
             })
             console.log(`[Auth] Created demo user: ${email}`)
@@ -83,7 +95,8 @@ export const {
             id: user.id,
             email: user.email,
             name: user.name,
-            role: user.role,
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            role: (user as any).role,
           }
         } catch (error) {
           console.error('[Auth] Database error:', error)

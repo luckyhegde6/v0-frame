@@ -6,6 +6,7 @@ import { useState, useCallback, useEffect } from 'react'
 import Link from 'next/link'
 import { Upload, X, ImageIcon, FileUp, ChevronRight, Home, ArrowLeft } from 'lucide-react'
 import { UserNav } from '@/components/user-nav'
+import { showSuccess, handleApiError } from '@/lib/error-handler'
 
 interface UploadedFile {
   id: string
@@ -129,10 +130,9 @@ export default function UploadPage() {
       setFiles([])
       setCollectionName('')
       setSelectedCollectionIds([])
-      alert('Upload successful!')
+      showSuccess('Upload successful!')
     } catch (error) {
-      console.error('Upload error:', error)
-      alert(`Upload failed: ${error instanceof Error ? error.message : 'Please try again.'}`)
+      handleApiError(error, 'Upload')
     } finally {
       setIsUploading(false)
     }

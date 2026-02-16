@@ -1,12 +1,28 @@
 import bcrypt from 'bcryptjs'
 import prisma from '../lib/prisma'
-import { Role } from '@prisma/client'
+
+const Role = {
+  USER: 'USER',
+  PRO: 'PRO',
+  CLIENT: 'CLIENT',
+  ADMIN: 'ADMIN',
+  SUPERADMIN: 'SUPERADMIN',
+} as const
 
 async function main() {
-  console.log('Seeding database for Phase 3 Authentication...')
+  console.log('Seeding database for Phase 4 Professional Projects...')
 
-  // Create demo users for Phase 3 testing
+  // Create demo users for Phase 4 testing
+  const adminEmail = process.env.ADMIN_EMAIL || 'admin@frame.app'
+  const adminPassword = process.env.ADMIN_PASSWORD || 'admin123'
+  
   const users = [
+    {
+      email: adminEmail,
+      name: 'Super Admin',
+      password: adminPassword,
+      role: Role.SUPERADMIN,
+    },
     {
       email: 'admin@frame.app',
       name: 'Admin User',
@@ -41,12 +57,13 @@ async function main() {
     if (!existingUser) {
       const hashedPassword = await bcrypt.hash(userData.password, 10)
       
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       await prisma.user.create({
         data: {
           email: userData.email,
           name: userData.name,
           password: hashedPassword,
-          role: userData.role,
+          role: userData.role as any,
         },
       })
       

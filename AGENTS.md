@@ -36,6 +36,12 @@ pnpm docker:clean           # Remove volumes and orphans
 
 # Installation
 pnpm install                # Install dependencies (auto-runs prisma generate)
+
+# Testing
+pnpm test                  # Run tests in watch mode
+pnpm test:run             # Run tests once
+pnpm test:coverage        # Run tests with coverage report
+pnpm test:ui              # Run tests with UI
 ```
 
 ## Code Style Guidelines
@@ -128,9 +134,43 @@ export async function GET(request: NextRequest) {
 ### Error Handling
 
 - Always wrap async operations in try/catch
-- Log errors with descriptive context: `console.error('[Context] Error:', error)`
+- Use the centralized error handler from `@/lib/error-handler.tsx`
+- Critical errors: Use `logCritical()` - logs to console and shows toast
+- Regular errors: Use `logError()` - logs to console
+- User-facing errors: Use `handleApiError()` - shows toast and logs
+- Use `showNonBlockingError()` for non-critical errors that should show as toast
 - Return user-friendly error messages in API responses
 - Use early returns to reduce nesting
+
+```typescript
+// API route error handling
+import { logCritical, handleApiError } from '@/lib/error-handler'
+
+export async function GET(request: NextRequest) {
+  try {
+    const data = await prisma.model.findMany()
+    return NextResponse.json({ data })
+  } catch (error) {
+    logCritical('Failed to fetch data', 'APIEndpoint', error as Error)
+    return NextResponse.json(
+      { error: 'Failed to fetch data' },
+      { status: 500 }
+    )
+  }
+}
+
+// Client-side error handling
+import { handleApiError, showSuccess } from '@/lib/error-handler'
+
+const handleSubmit = async () => {
+  try {
+    await apiCall()
+    showSuccess('Operation successful')
+  } catch (error) {
+    handleApiError(error, 'OperationName')
+  }
+}
+```
 
 ### Styling (Tailwind CSS)
 
@@ -175,8 +215,11 @@ components/             # React components
 lib/                    # Utility functions
   jobs/                 # Job queue & handlers
   prisma.ts             # Prisma client setup
+  error-handler.tsx     # Centralized error handling
 prisma/
   schema.prisma         # Database schema
+__tests__/              # Test files
+  lib/                  # Unit tests for lib functions
 ```
 
 ### Environment Variables
@@ -193,12 +236,19 @@ Required in `.env`:
 4. **Async-aware** - Respect the job-based architecture
 5. **Type-safe** - No loose typing without comments explaining why
 
-## Testing (Future)
+## Testing
 
-No test framework is currently configured. If adding tests:
-- Prefer Vitest for unit tests
-- Use Playwright for E2E tests
-- Place tests alongside source files: `Component.test.tsx`
+The project uses Vitest for testing. Run tests with:
+- `pnpm test` - Run in watch mode
+- `pnpm test:run` - Run once
+- `pnpm test:coverage` - Run with coverage
+- `pnpm test:ui` - Run with UI
+
+Place tests in `__tests__/` directory:
+- Unit tests: `__tests__/lib/**/*.test.ts`
+- Component tests alongside source: `Component.test.tsx`
+
+Follow TDD principles - write tests before implementation for complex logic.
 
 ---
 

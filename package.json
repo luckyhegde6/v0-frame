@@ -15,7 +15,12 @@
     "db:seed": "prisma db seed",
     "db:studio": "prisma studio",
     "docker:clean": "docker-compose down -v --remove-orphans",
-    "local": "pnpm docker:up && pnpm db:push && pnpm db:seed && pnpm dev"
+    "local": "pnpm docker:up && pnpm db:push && pnpm db:seed && pnpm dev",
+    "test": "vitest",
+    "test:run": "vitest run",
+    "test:ui": "vitest --ui",
+    "test:coverage": "vitest run --coverage",
+    "test:watch": "vitest --watch"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.11.1",
@@ -88,14 +93,19 @@
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.1.9",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.0.0",
     "@types/node": "^22.19.7",
     "@types/pg": "^8.16.0",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@vitejs/plugin-react": "^4.3.0",
+    "jsdom": "^24.0.0",
     "postcss": "^8.5",
     "tailwindcss": "^4.1.9",
     "tw-animate-css": "1.3.3",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^2.0.0"
   },
   "trustedDependencies": [
     "pg-native"
