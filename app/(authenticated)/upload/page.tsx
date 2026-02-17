@@ -140,36 +140,17 @@ export default function UploadPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Navigation Header */}
-      <nav className="flex items-center justify-between px-6 py-4 border-b border-border sticky top-0 z-40 bg-background/80 backdrop-blur-sm">
-        <div className="flex items-center gap-6">
-          <Link href="/" className="text-2xl font-bold tracking-tighter">
-            <span className="text-primary">FRAME</span>
-          </Link>
-          {/* Breadcrumbs */}
-          <nav className="hidden sm:flex items-center gap-2 text-sm text-muted-foreground">
-            <Link href="/" className="hover:text-primary transition-colors flex items-center gap-1">
-              <Home className="w-4 h-4" />
-            </Link>
-            <ChevronRight className="w-4 h-4" />
-            <Link href="/gallery" className="hover:text-primary transition-colors">
-              Gallery
-            </Link>
-            <ChevronRight className="w-4 h-4" />
-            <span className="text-foreground font-medium">Upload</span>
-          </nav>
-        </div>
-        <div className="flex items-center gap-4">
-          <Link
-            href="/gallery"
-            className="flex items-center gap-2 text-sm text-muted-foreground hover:text-primary transition-colors"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            Back to Gallery
-          </Link>
-          <UserNav />
-        </div>
-      </nav>
+      {/* Back Link - below main Header */}
+      <div className="border-b border-border px-6 py-3 flex items-center justify-between sticky top-16 z-30 bg-background/80 backdrop-blur-sm">
+        <div></div>
+        <Link
+          href="/gallery"
+          className="flex items-center gap-2 text-sm text-muted-foreground hover:text-primary transition-colors"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          Back to Gallery
+        </Link>
+      </div>
 
       {/* Page Title Bar */}
       <div className="border-b border-border px-6 py-3 bg-muted/50">

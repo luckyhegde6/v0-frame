@@ -99,51 +99,42 @@ export default function GalleryPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Navigation Header */}
-      <nav className="flex items-center justify-between px-6 py-4 border-b border-border sticky top-0 z-40 bg-background/80 backdrop-blur-sm">
-        <div className="flex items-center gap-6">
-          <Link href="/" className="text-2xl font-bold tracking-tighter">
-            <span className="text-primary">FRAME</span>
-          </Link>
-          <Breadcrumbs />
-        </div>
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2 bg-card border border-border rounded-lg p-1">
-            <button
-              onClick={() => setViewMode('grid')}
-              className={cn(
-                "p-2 rounded transition-colors",
-                viewMode === 'grid'
-                  ? 'bg-primary/20 text-primary'
-                  : 'text-foreground/60 hover:text-foreground'
-              )}
-              title="Grid view"
-            >
-              <Grid size={20} />
-            </button>
-            <button
-              onClick={() => setViewMode('list')}
-              className={cn(
-                "p-2 rounded transition-colors",
-                viewMode === 'list'
-                  ? 'bg-primary/20 text-primary'
-                  : 'text-foreground/60 hover:text-foreground'
-              )}
-              title="List view"
-            >
-              <List size={20} />
-            </button>
-          </div>
-          <Link 
-            href="/upload" 
-            className="px-4 py-2 bg-primary text-primary-foreground rounded-lg font-medium hover:opacity-90 transition-opacity flex items-center gap-2"
+      {/* View Controls - below main Header */}
+      <div className="border-b border-border px-6 py-3 flex items-center justify-between sticky top-16 z-30 bg-background/80 backdrop-blur-sm">
+        <div className="flex items-center gap-2 bg-card border border-border rounded-lg p-1">
+          <button
+            onClick={() => setViewMode('grid')}
+            className={cn(
+              "p-2 rounded transition-colors",
+              viewMode === 'grid'
+                ? 'bg-primary/20 text-primary'
+                : 'text-foreground/60 hover:text-foreground'
+            )}
+            title="Grid view"
           >
-            <Upload size={16} />
-            <span className="hidden sm:inline">Upload</span>
-          </Link>
-          <UserNav />
+            <Grid size={20} />
+          </button>
+          <button
+            onClick={() => setViewMode('list')}
+            className={cn(
+              "p-2 rounded transition-colors",
+              viewMode === 'list'
+                ? 'bg-primary/20 text-primary'
+                : 'text-foreground/60 hover:text-foreground'
+            )}
+            title="List view"
+          >
+            <List size={20} />
+          </button>
         </div>
-      </nav>
+        <Link 
+          href="/upload" 
+          className="px-4 py-2 bg-primary text-primary-foreground rounded-lg font-medium hover:opacity-90 transition-opacity flex items-center gap-2"
+        >
+          <Upload size={16} />
+          <span className="hidden sm:inline">Upload</span>
+        </Link>
+      </div>
 
       {/* Main Content */}
       <main className="px-6 py-12 max-w-7xl mx-auto">

@@ -1,7 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth/auth'
 import prisma from '@/lib/prisma'
-import { logCritical } from '@/lib/error-handler'
+
+function serializeBigInt(obj: unknown): unknown {
+  if (obj === null || obj === undefined) return obj
+  if (typeof obj === 'bigint') return obj.toString()
+  if (Array.isArray(obj)) return obj.map(serializeBigInt)
+  if (typeof obj === 'object') {
+    return Object.fromEntries(
+      Object.entries(obj).map(([k, v]) => [k, serializeBigInt(v)])
+    )
+  }
+  return obj
+}
 
 export async function GET(request: NextRequest) {
   try {
@@ -21,21 +32,20 @@ export async function GET(request: NextRequest) {
       orderBy: { updatedAt: 'desc' }
     })
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const projectsWithStorage = projects.map((p: any) => ({
+    const projectsWithStorage = projects.map((p) => ({
       id: p.id,
       name: p.name,
       description: p.description,
       imageCount: p._count.images,
-      storageQuota: p.quotaBytes,
-      storageUsed: p.storageUsed,
+      storageQuota: p.quotaBytes.toString(),
+      storageUsed: p.storageUsed.toString(),
       createdAt: p.createdAt,
       updatedAt: p.updatedAt
     }))
 
     return NextResponse.json({ projects: projectsWithStorage })
   } catch (error) {
-    logCritical('Failed to fetch projects', 'ProjectsAPI', error as Error)
+    console.error('[ProjectsAPI] Failed to fetch projects:', error)
     return NextResponse.json(
       { error: 'Failed to fetch projects' },
       { status: 500 }
@@ -79,7 +89,7 @@ export async function POST(request: NextRequest) {
       data: {
         name: name.trim(),
         description: description?.trim() || null,
-        quotaBytes: quotaBytes || 10737418240,
+        quotaBytes: BigInt(quotaBytes || '10737418240'),
         ownerId: session.user.id
       }
     })
@@ -90,14 +100,14 @@ export async function POST(request: NextRequest) {
         name: project.name,
         description: project.description,
         imageCount: 0,
-        storageQuota: project.quotaBytes,
-        storageUsed: 0,
+        storageQuota: project.quotaBytes.toString(),
+        storageUsed: '0',
         createdAt: project.createdAt,
         updatedAt: project.updatedAt
       }
     }, { status: 201 })
   } catch (error) {
-    logCritical('Failed to create project', 'ProjectsAPI', error as Error)
+    console.error('[ProjectsAPI] Failed to create project:', error)
     return NextResponse.json(
       { error: 'Failed to create project' },
       { status: 500 }

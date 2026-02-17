@@ -30,12 +30,14 @@ export async function POST(request: NextRequest) {
     const title = formData.get('title') as string;
     const collectionName = formData.get('collection') as string;
     const collectionIdsRaw = formData.get('collectionIds') as string;
+    const projectId = formData.get('projectId') as string;
 
     console.log('[Upload API] Payload:', {
       fileName: file?.name,
       title,
       collectionName,
-      hasCollectionIds: !!collectionIdsRaw
+      hasCollectionIds: !!collectionIdsRaw,
+      hasProjectId: !!projectId
     });
 
     let collectionIds: string[] = [];
@@ -116,6 +118,32 @@ export async function POST(request: NextRequest) {
       tempPath: image.tempPath,
       checksum: image.checksum,
     });
+
+    // 6b. Link to project if projectId provided
+    if (projectId) {
+      const project = await prisma.project.findFirst({
+        where: {
+          id: projectId,
+          ownerId: userId
+        }
+      })
+
+      if (project) {
+        await prisma.projectImage.create({
+          data: {
+            projectId,
+            imageId: image.id
+          }
+        })
+
+        await prisma.project.update({
+          where: { id: projectId },
+          data: {
+            storageUsed: project.storageUsed + image.sizeBytes
+          }
+        })
+      }
+    }
 
     // 7. Return an immutable response
     // Contract §2 Response Format

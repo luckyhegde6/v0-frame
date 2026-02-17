@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Header } from '@/components/header'
 import { Activity, ArrowLeft, RefreshCw, Loader2, Clock, CheckCircle, XCircle, AlertCircle } from 'lucide-react'
 import Link from 'next/link'
 import { handleApiError } from '@/lib/error-handler'
@@ -92,8 +91,6 @@ export default function AdminJobsPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <Header />
-
       <main className="px-6 py-8 max-w-7xl mx-auto">
         <div className="flex items-center gap-4 mb-6">
           <Link

@@ -2,11 +2,29 @@
 
 import Link from 'next/link'
 import { useSession, signOut } from 'next-auth/react'
-import { Image, Upload, Shield, ArrowRight, LogOut, User } from 'lucide-react'
+import { Image, Upload, Shield, ArrowRight, LogOut, User, FolderOpen, Crown, Layers, Star } from 'lucide-react'
 
 export default function Home() {
   const { data: session, status } = useSession()
   const isAuthenticated = status === 'authenticated'
+  const userRole = session?.user?.role
+
+  const isAdmin = userRole === 'ADMIN' || userRole === 'SUPERADMIN'
+  const isClientOrAbove = userRole && ['CLIENT', 'PRO', 'ADMIN', 'SUPERADMIN'].includes(userRole)
+  const isPro = userRole === 'PRO'
+  const isUserOnly = userRole === 'USER' || !userRole
+
+  const getHomeLink = () => {
+    if (isAdmin) return '/admin'
+    if (isClientOrAbove) return '/projects'
+    return '/gallery'
+  }
+
+  const getHomeLabel = () => {
+    if (isAdmin) return 'Dashboard'
+    if (isClientOrAbove) return 'Projects'
+    return 'Gallery'
+  }
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -19,19 +37,21 @@ export default function Home() {
           {isAuthenticated ? (
             <>
               <Link
-                href="/gallery"
+                href={getHomeLink()}
                 className="hidden sm:flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
               >
-                <Image className="w-4 h-4" />
-                Gallery
+                {isAdmin ? <Shield className="w-4 h-4" /> : isClientOrAbove ? <FolderOpen className="w-4 h-4" /> : <Image className="w-4 h-4" />}
+                {getHomeLabel()}
               </Link>
-              <Link
-                href="/upload"
-                className="hidden sm:flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
-              >
-                <Upload className="w-4 h-4" />
-                Upload
-              </Link>
+              {isUserOnly && (
+                <Link
+                  href="/upload"
+                  className="hidden sm:flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  <Upload className="w-4 h-4" />
+                  Upload
+                </Link>
+              )}
               <div className="flex items-center gap-3 pl-4 border-l border-border">
                 <div className="flex items-center gap-2 text-sm">
                   <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
@@ -84,10 +104,10 @@ export default function Home() {
         <div className="flex flex-col sm:flex-row gap-4 justify-center">
           {isAuthenticated ? (
             <Link
-              href="/gallery"
+              href={getHomeLink()}
               className="inline-flex items-center justify-center gap-2 px-8 py-4 bg-primary text-primary-foreground rounded-lg font-semibold hover:opacity-90 transition-opacity"
             >
-              Go to Gallery
+              Go to {getHomeLabel()}
               <ArrowRight className="w-4 h-4" />
             </Link>
           ) : (
@@ -99,14 +119,146 @@ export default function Home() {
               <ArrowRight className="w-4 h-4" />
             </Link>
           )}
-          <Link
-            href="/gallery"
-            className="inline-flex items-center justify-center gap-2 px-8 py-4 border border-border rounded-lg font-semibold hover:bg-muted transition-colors"
-          >
-            View Gallery
-          </Link>
+          {isUserOnly && (
+            <Link
+              href="/gallery"
+              className="inline-flex items-center justify-center gap-2 px-8 py-4 border border-border rounded-lg font-semibold hover:bg-muted transition-colors"
+            >
+              View Gallery
+            </Link>
+          )}
         </div>
       </section>
+
+      {/* Profile Card Section - Only show when authenticated */}
+      {isAuthenticated && session?.user && (
+        <section className="px-6 py-12 border-t border-border bg-muted/30">
+          <div className="max-w-4xl mx-auto">
+            <h2 className="text-2xl font-bold mb-6">Your Account</h2>
+            <div className="bg-card border border-border rounded-lg p-6">
+              <div className="flex items-start gap-6">
+                <div className="w-20 h-20 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
+                  {session.user.image ? (
+                    <img 
+                      src={session.user.image} 
+                      alt={session.user.name || 'User'} 
+                      className="w-20 h-20 rounded-full object-cover"
+                    />
+                  ) : (
+                    <User className="w-10 h-10 text-primary" />
+                  )}
+                </div>
+                <div className="flex-1">
+                  <div className="flex items-center gap-3 mb-2">
+                    <h3 className="text-xl font-semibold">{session.user.name || 'User'}</h3>
+                    {session.user.role === 'SUPERADMIN' && (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-yellow-500/10 text-yellow-500 text-xs font-medium rounded-full">
+                        <Crown className="w-3 h-3" />
+                        SUPERADMIN
+                      </span>
+                    )}
+                    {session.user.role === 'ADMIN' && (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-red-500/10 text-red-500 text-xs font-medium rounded-full">
+                        <Shield className="w-3 h-3" />
+                        ADMIN
+                      </span>
+                    )}
+                    {session.user.role === 'PRO' && (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-500/10 text-blue-500 text-xs font-medium rounded-full">
+                        PRO
+                      </span>
+                    )}
+                    {session.user.role === 'CLIENT' && (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-green-500/10 text-green-500 text-xs font-medium rounded-full">
+                        CLIENT
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-muted-foreground mb-4">{session.user.email}</p>
+                  
+                  <div className="flex flex-wrap gap-3">
+                    {/* USER: Gallery and Upload */}
+                    {isUserOnly && (
+                      <>
+                        <Link
+                          href="/gallery"
+                          className="inline-flex items-center gap-2 px-4 py-2 bg-primary/10 text-primary rounded-lg hover:bg-primary/20 transition-colors"
+                        >
+                          <Image className="w-4 h-4" />
+                          My Gallery
+                        </Link>
+                        <Link
+                          href="/upload"
+                          className="inline-flex items-center gap-2 px-4 py-2 border border-border rounded-lg hover:bg-muted transition-colors"
+                        >
+                          <Upload className="w-4 h-4" />
+                          Upload Photos
+                        </Link>
+                      </>
+                    )}
+
+                    {/* CLIENT and PRO: Projects, Albums, Favorites */}
+                    {isClientOrAbove && !isAdmin && (
+                      <>
+                        <Link
+                          href="/projects"
+                          className="inline-flex items-center gap-2 px-4 py-2 bg-green-500/10 text-green-500 rounded-lg hover:bg-green-500/20 transition-colors"
+                        >
+                          <FolderOpen className="w-4 h-4" />
+                          Projects
+                        </Link>
+                        <Link
+                          href="/albums"
+                          className="inline-flex items-center gap-2 px-4 py-2 bg-purple-500/10 text-purple-500 rounded-lg hover:bg-purple-500/20 transition-colors"
+                        >
+                          <Layers className="w-4 h-4" />
+                          Albums
+                        </Link>
+                        <Link
+                          href="/favorites"
+                          className="inline-flex items-center gap-2 px-4 py-2 bg-yellow-500/10 text-yellow-500 rounded-lg hover:bg-yellow-500/20 transition-colors"
+                        >
+                          <Star className="w-4 h-4" />
+                          Favorites
+                        </Link>
+                        {isPro && (
+                          <Link
+                            href="/upload"
+                            className="inline-flex items-center gap-2 px-4 py-2 border border-border rounded-lg hover:bg-muted transition-colors"
+                          >
+                            <Upload className="w-4 h-4" />
+                            Upload
+                          </Link>
+                        )}
+                      </>
+                    )}
+
+                    {/* ADMIN and SUPERADMIN: Admin Panel */}
+                    {isAdmin && (
+                      <>
+                        <Link
+                          href="/admin"
+                          className="inline-flex items-center gap-2 px-4 py-2 bg-purple-500/10 text-purple-500 rounded-lg hover:bg-purple-500/20 transition-colors"
+                        >
+                          <Shield className="w-4 h-4" />
+                          Admin Dashboard
+                        </Link>
+                        <Link
+                          href="/projects"
+                          className="inline-flex items-center gap-2 px-4 py-2 bg-green-500/10 text-green-500 rounded-lg hover:bg-green-500/20 transition-colors"
+                        >
+                          <FolderOpen className="w-4 h-4" />
+                          Projects
+                        </Link>
+                      </>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* Features Section */}
       <section className="px-6 py-16 border-t border-border">

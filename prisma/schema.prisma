@@ -49,6 +49,7 @@ model Image {
   collections Collection[]
   jobs        Job[]
   projectImages ProjectImage[]
+  albumImages AlbumImage[]
   
   // Timestamps
   createdAt DateTime    @default(now())
@@ -116,6 +117,10 @@ model User {
   collections   Collection[]
   projects      Project[]
   shareTokens   ShareToken[]
+  notifications Notification[]
+  adminTasks    AdminTask[]
+  albums        Album[]
+  projectAccess ProjectAccess[]
 
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
@@ -136,8 +141,8 @@ model Project {
   description String?
   
   // Storage management (in bytes)
-  quotaBytes  Int      @default(10737418240) // 10GB default
-  storageUsed Int      @default(0)
+  quotaBytes  BigInt   @default(10737418240) // 10GB default
+  storageUsed BigInt   @default(0)
   
   // Ownership
   ownerId     String
@@ -146,12 +151,82 @@ model Project {
   // Relations
   images      ProjectImage[]
   shareTokens ShareToken[]
+  accessList ProjectAccess[]
   
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
   @@unique([name, ownerId])
   @@index([ownerId])
+}
+
+// Project Access Control
+enum AccessLevel {
+  READ
+  WRITE
+  FULL
+}
+
+model ProjectAccess {
+  id        String     @id @default(cuid())
+  projectId String
+  project   Project    @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessLevel AccessLevel @default(READ)
+  
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  @@unique([projectId, userId])
+  @@index([projectId])
+  @@index([userId])
+}
+
+// Album Model for organizing media
+enum AlbumCategory {
+  PHOTO_ALBUM
+  COVER_PAGE
+  SHORT_VIDEOS
+  REELS
+  SHORTS
+}
+
+model Album {
+  id          String       @id @default(cuid())
+  name        String
+  description String?
+  category    AlbumCategory @default(PHOTO_ALBUM)
+  
+  // Ownership
+  ownerId     String
+  owner       User         @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  
+  // Relations
+  images      AlbumImage[]
+  
+  coverImage  String?
+  
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  @@unique([name, ownerId])
+  @@index([ownerId])
+}
+
+// Album-Image many-to-many relationship
+model AlbumImage {
+  id        String   @id @default(cuid())
+  albumId   String
+  album     Album    @relation(fields: [albumId], references: [id], onDelete: Cascade)
+  imageId   String
+  image     Image    @relation(fields: [imageId], references: [id], onDelete: Cascade)
+  
+  addedAt   DateTime @default(now())
+
+  @@unique([albumId, imageId])
+  @@index([albumId])
+  @@index([imageId])
 }
 
 // Project-Image many-to-many relationship
@@ -196,6 +271,109 @@ enum Role {
   CLIENT
   ADMIN
   SUPERADMIN
+}
+
+// Notifications for admin
+model Notification {
+  id        String           @id @default(cuid())
+  type      NotificationType
+  title     String
+  message   String
+  status    NotificationStatus @default(UNREAD)
+  read      Boolean          @default(false)
+  requestor String?          // Who/what triggered the notification
+  userId    String?
+  user      User?            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  metadata  Json?
+  
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+  
+  @@index([userId])
+  @@index([read])
+  @@index([status])
+  @@index([createdAt])
+}
+
+enum NotificationStatus {
+  UNREAD
+  READ
+  SNOOZED
+}
+
+// Admin Task Management
+model AdminTask {
+  id          String      @id @default(cuid())
+  type        TaskType
+  status      TaskStatus  @default(PENDING)
+  priority    TaskPriority @default(MEDIUM)
+  progress    Int         @default(0)
+  
+  // Task details
+  title       String
+  description String?
+  payload     Json?
+  result      Json?
+  error       String?
+  
+  // Scheduling
+  scheduledAt DateTime?
+  startedAt   DateTime?
+  completedAt DateTime?
+  
+  // Metadata
+  createdById String?
+  createdBy   User?       @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  
+  @@index([type])
+  @@index([status])
+  @@index([priority])
+  @@index([scheduledAt])
+}
+
+enum TaskType {
+  // Image operations
+  COMPRESS_IMAGES
+  EXTRACT_ARCHIVE
+  OFFLINE_UPLOAD
+  SYNC_STORAGE
+  GENERATE_THUMBNAILS
+  REGENERATE_METADATA
+  
+  // System operations  
+  BACKUP_DATABASE
+  CLEANUP_TEMP
+  OPTIMIZE_STORAGE
+  SYNC_USERS
+}
+
+enum TaskStatus {
+  PENDING
+  QUEUED
+  RUNNING
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+enum TaskPriority {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum NotificationType {
+  JOB_ERROR
+  JOB_COMPLETE
+  SHARE_REQUEST
+  USER_REGISTERED
+  QUOTA_EXCEEDED
+  SYSTEM_ERROR
+  ACCESS_REQUEST
 }
 
 // Phase 1 & 2: Image Lifecycle States

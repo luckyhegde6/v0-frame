@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth/auth'
 import prisma from '@/lib/prisma'
-import { logCritical } from '@/lib/error-handler'
 
 export async function GET(request: NextRequest) {
   try {
@@ -59,7 +58,7 @@ export async function GET(request: NextRequest) {
       },
     })
   } catch (error) {
-    logCritical('Failed to fetch stats', 'AdminStatsAPI', error as Error)
+    console.error('[AdminStatsAPI] Failed to fetch stats:', error)
     return NextResponse.json(
       { error: 'Failed to fetch stats' },
       { status: 500 }

@@ -1,7 +1,34 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth/auth'
 import prisma from '@/lib/prisma'
-import { logCritical } from '@/lib/error-handler'
+
+/**
+ * @swagger
+ * /api/admin/users:
+ *   get:
+ *     summary: Get all users (Admin only)
+ *     description: Returns a list of all users with their image counts
+ *     tags: [Admin]
+ *     security:
+ *       - BearerAuth: []
+ *       - CookieAuth: []
+ *     responses:
+ *       200:
+ *         description: List of users
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 users:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/User'
+ *       403:
+ *         description: Forbidden
+ *       500:
+ *         description: Internal server error
+ */
 
 export async function GET(request: NextRequest) {
   try {
@@ -32,7 +59,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ users: usersWithCounts })
   } catch (error) {
-    logCritical('Failed to fetch users', 'AdminUsersAPI', error as Error)
+    console.error('[AdminUsersAPI] Failed to fetch users:', error)
     return NextResponse.json(
       { error: 'Failed to fetch users' },
       { status: 500 }

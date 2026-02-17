@@ -90,27 +90,64 @@ const { auth } = NextAuth({
 export default auth((req) => {
   const { nextUrl } = req
   const isLoggedIn = !!req.auth
-  const userRole = req.auth?.user?.role
+  const userRole = req.auth?.user?.role as Role | undefined
 
   const isAuthRoute = nextUrl.pathname.startsWith('/auth')
-  const isProtectedRoute = 
-    nextUrl.pathname.startsWith('/gallery') ||
-    nextUrl.pathname.startsWith('/upload') ||
-    nextUrl.pathname.startsWith('/admin')
+  const isGalleryRoute = nextUrl.pathname.startsWith('/gallery')
+  const isUploadRoute = nextUrl.pathname.startsWith('/upload')
+  const isProjectsRoute = nextUrl.pathname.startsWith('/projects')
+  const isAlbumsRoute = nextUrl.pathname.startsWith('/albums')
+  const isFavoritesRoute = nextUrl.pathname.startsWith('/favorites')
+  const isAdminRoute = nextUrl.pathname.startsWith('/admin')
 
-  // Redirect authenticated users away from auth pages
+  const isClientOrAbove = userRole && ['CLIENT', 'PRO', 'ADMIN', 'SUPERADMIN'].includes(userRole)
+  const isAdmin = userRole === 'ADMIN' || userRole === 'SUPERADMIN'
+  const isPro = userRole === 'PRO'
+  const isUserOnly = userRole === 'USER' || !userRole
+
+  // Redirect authenticated users away from auth pages - based on role
   if (isAuthRoute && isLoggedIn) {
+    if (isAdmin) {
+      return NextResponse.redirect(new URL('/admin', nextUrl))
+    }
+    if (isClientOrAbove) {
+      return NextResponse.redirect(new URL('/projects', nextUrl))
+    }
     return NextResponse.redirect(new URL('/gallery', nextUrl))
   }
 
-  // Protect private routes
-  if (isProtectedRoute && !isLoggedIn) {
-    return NextResponse.redirect(new URL('/auth/signin', nextUrl))
+  // Protect /admin routes - only ADMIN and SUPERADMIN
+  if (isAdminRoute) {
+    if (!isLoggedIn) {
+      return NextResponse.redirect(new URL('/auth/signin', nextUrl))
+    }
+    if (!isAdmin) {
+      return NextResponse.redirect(new URL('/projects', nextUrl))
+    }
+    return NextResponse.next()
   }
 
-  // Admin route protection
-  if (nextUrl.pathname.startsWith('/admin') && userRole !== 'ADMIN') {
-    return NextResponse.redirect(new URL('/gallery', nextUrl))
+  // Protect /projects, /albums, /favorites - only CLIENT and above
+  if (isProjectsRoute || isAlbumsRoute || isFavoritesRoute) {
+    if (!isLoggedIn) {
+      return NextResponse.redirect(new URL('/auth/signin', nextUrl))
+    }
+    if (!isClientOrAbove) {
+      return NextResponse.redirect(new URL('/gallery', nextUrl))
+    }
+    return NextResponse.next()
+  }
+
+  // Protect /gallery and /upload - only USER (not CLIENT/PRO/ADMIN)
+  if (isGalleryRoute || isUploadRoute) {
+    if (!isLoggedIn) {
+      return NextResponse.redirect(new URL('/auth/signin', nextUrl))
+    }
+    // If user is CLIENT, PRO, ADMIN or SUPERADMIN, redirect to projects
+    if (isClientOrAbove) {
+      return NextResponse.redirect(new URL('/projects', nextUrl))
+    }
+    return NextResponse.next()
   }
 
   return NextResponse.next()

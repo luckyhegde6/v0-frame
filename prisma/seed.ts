@@ -1,55 +1,21 @@
 import bcrypt from 'bcryptjs'
 import prisma from '../lib/prisma'
 
-const Role = {
-  USER: 'USER',
-  PRO: 'PRO',
-  CLIENT: 'CLIENT',
-  ADMIN: 'ADMIN',
-  SUPERADMIN: 'SUPERADMIN',
-} as const
-
 async function main() {
-  console.log('Seeding database for Phase 4 Professional Projects...')
+  console.log('Seeding database for FRAME...')
 
-  // Create demo users for Phase 4 testing
   const adminEmail = process.env.ADMIN_EMAIL || 'admin@frame.app'
   const adminPassword = process.env.ADMIN_PASSWORD || 'admin123'
   
-  const users = [
-    {
-      email: adminEmail,
-      name: 'Super Admin',
-      password: adminPassword,
-      role: Role.SUPERADMIN,
-    },
-    {
-      email: 'admin@frame.app',
-      name: 'Admin User',
-      password: 'admin123',
-      role: Role.ADMIN,
-    },
-    {
-      email: 'user@frame.app',
-      name: 'Regular User',
-      password: 'user123',
-      role: Role.USER,
-    },
-    {
-      email: 'pro@frame.app',
-      name: 'Pro User',
-      password: 'pro123',
-      role: Role.PRO,
-    },
-    {
-      email: 'client@frame.app',
-      name: 'Client User',
-      password: 'client123',
-      role: Role.CLIENT,
-    },
+  const demoUsers = [
+    { email: adminEmail, name: 'Super Admin', password: adminPassword, role: 'SUPERADMIN' },
+    { email: 'admin2@frame.app', name: 'Admin User', password: 'admin123', role: 'ADMIN' },
+    { email: 'user@frame.app', name: 'Regular User', password: 'user123', role: 'USER' },
+    { email: 'pro@frame.app', name: 'Pro User', password: 'pro123', role: 'PRO' },
+    { email: 'client@frame.app', name: 'Client User', password: 'client123', role: 'CLIENT' },
   ]
 
-  for (const userData of users) {
+  for (const userData of demoUsers) {
     const existingUser = await prisma.user.findUnique({
       where: { email: userData.email },
     })
@@ -57,13 +23,12 @@ async function main() {
     if (!existingUser) {
       const hashedPassword = await bcrypt.hash(userData.password, 10)
       
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       await prisma.user.create({
         data: {
           email: userData.email,
           name: userData.name,
           password: hashedPassword,
-          role: userData.role as any,
+          role: userData.role as 'USER' | 'PRO' | 'CLIENT' | 'ADMIN' | 'SUPERADMIN',
         },
       })
       
@@ -73,7 +38,12 @@ async function main() {
     }
   }
 
-  console.log('Seeding finished.')
+  console.log('\n=== Demo Credentials ===')
+  console.log('SUPERADMIN: admin@frame.app / admin123')
+  console.log('ADMIN: admin2@frame.app / admin123')
+  console.log('USER: user@frame.app / user123')
+  console.log('PRO: pro@frame.app / pro123')
+  console.log('CLIENT: client@frame.app / client123')
 }
 
 main()
