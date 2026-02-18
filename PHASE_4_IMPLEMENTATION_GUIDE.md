@@ -1,9 +1,9 @@
-# Phase 4 Implementation Guide: Professional Projects
+# Phase 4 Implementation Guide: Professional Projects & PRO Features
 
 **Status**: ✅ READY FOR DEVELOPMENT  
-**Version**: 1.0.0  
-**Last Updated**: 2026-02-16  
-**Date**: 2026-02-16  
+**Version**: 2.0.0  
+**Last Updated**: 2026-02-18  
+**Date**: 2026-02-18  
 **Phase**: 4 - Professional Projects  
 **Dependencies**: Phase 1 (Ingestion), Phase 3 (Auth)
 
@@ -11,15 +11,17 @@
 
 ## Overview
 
-Phase 4 introduces professional project-based workflows with client sharing capabilities. This enables photographers to organize images into projects and share them securely with clients via token-based access.
+Phase 4 introduces professional project-based workflows with client sharing capabilities, PRO profile management, album settings, and comprehensive audit logging.
 
 ### Key Features Implemented
 
-1. **Project Management** - Create, organize, and manage photo projects
-2. **Storage Quotas** - Per-project storage limits with enforcement
-3. **Client Sharing** - Secure, time-limited sharing via token-based links
-4. **Project-scoped Uploads** - Upload images directly to specific projects
-5. **Read-only Client Views** - Clean interface for clients to view shared projects
+1. **PRO Profile Management** - Business profiles with logo, location, contact, social links
+2. **Project Management** - Enhanced projects with event details, branding, cover images
+3. **Album Settings** - Upload quality, resolution, watermark, face recognition controls
+4. **Client Access** - Linked clients with granular permissions
+5. **Audit Logging** - Comprehensive activity tracking for admins
+6. **QR Code Sharing** - Generate shareable links with QR codes
+7. **Service Popup** - Post-project creation popup for generating links
 
 ---
 
@@ -27,345 +29,596 @@ Phase 4 introduces professional project-based workflows with client sharing capa
 
 ### Database Schema
 
-#### Project Model
+#### PRO Profile Model
+```prisma
+model ProProfile {
+  id              String   @id @default(cuid())
+  userId          String   @unique
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  businessName    String?
+  logo            String?
+  location        String?
+  phone           String?
+  email           String?
+  website         String?
+  bio             String?
+  facebook        String?
+  instagram       String?
+  twitter         String?
+  linkedin        String?
+  portfolioUrl    String?
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+```
+
+#### Enhanced Project Model
 ```prisma
 model Project {
-  id            String       @id @default(cuid())
-  name          String
-  description   String?
-  ownerId       String
-  owner         User         @relation(fields: [ownerId], references: [id], onDelete: Cascade)
-  images        Image[]
-  shareTokens   ShareToken[]
-  quotaBytes    Int          @default(5368709120) // 5GB default
-  createdAt     DateTime     @default(now())
-  updatedAt     DateTime     @updatedAt
-}
-```
-
-#### ShareToken Model
-```prisma
-model ShareToken {
   id              String    @id @default(cuid())
-  token           String    @unique
-  projectId       String
-  project         Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  clientEmail     String?   // Optional: email of specific client
-  expiresAt       DateTime? // Optional: token expiry
-  canUpload       Boolean   @default(false)  // Always false per contract
-  canDelete       Boolean   @default(false)  // Always false per contract
-  accessCount     Int       @default(0)
-  lastAccessedAt  DateTime?
+  name            String
+  description     String?
+  eventName       String?
+  startDate       DateTime?
+  branding        Boolean   @default(false)
+  watermarkImage  String?
+  coverImage      String?
+  
+  quotaBytes      BigInt    @default(10737418240)
+  storageUsed     BigInt    @default(0)
+  
+  ownerId         String
+  owner           User      @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  
+  images          ProjectImage[]
+  shareTokens     ShareToken[]
+  accessList      ProjectAccess[]
+  clientAccess    ClientProjectAccess[]
+  albums          Album[]
+  
   createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
 }
 ```
 
-#### Updated Image Model
+#### Client Access Models
 ```prisma
-model Image {
-  // ... existing fields ...
-  projectId     String?
-  project       Project?    @relation(fields: [projectId], references: [id], onDelete: SetNull)
-  ownerId       String
-  owner         User        @relation(fields: [ownerId], references: [id], onDelete: Cascade)
-  // ...
+model ClientProjectAccess {
+  id          String        @id @default(cuid())
+  projectId   String
+  project     Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessLevel AccessLevel   @default(READ)
+  
+  grantedById String
+  grantedBy   User          @relation(fields: [grantedById], references: [id], onDelete: Cascade)
+  
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+}
+
+model ClientAlbumAccess {
+  id          String        @id @default(cuid())
+  albumId     String
+  album       Album         @relation(fields: [albumId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessLevel AccessLevel   @default(READ)
+  
+  grantedById String
+  grantedBy   User          @relation(fields: [grantedById], references: [id], onDelete: Cascade)
+  
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
 }
 ```
 
-### API Architecture
-
-#### Protected Routes (Authentication Required)
-- `/api/projects` - Project CRUD operations
-- `/api/projects/[id]/images` - Project-scoped image operations
-- `/api/projects/[id]/share` - Share token management
-- `/api/upload` - Upload with optional project assignment
-
-#### Public Routes (No Authentication)
-- `/api/share/[token]` - Validate share token
-- `/api/share/[token]/images` - Get shared images
-
-### File Structure
-
+#### Album Settings Model
+```prisma
+model AlbumSettings {
+  id              String           @id @default(cuid())
+  albumId         String           @unique
+  album           Album            @relation(fields: [albumId], references: [id], onDelete: Cascade)
+  
+  imageQuality    ImageQuality     @default(HIGH)
+  videoQuality   VideoQuality     @default(HIGH)
+  shortQuality   ShortQuality     @default(HIGH)
+  
+  maxImageWidth  Int              @default(4000)
+  maxImageHeight Int              @default(4000)
+  
+  watermarkEnabled Boolean         @default(false)
+  watermarkImage  String?
+  watermarkOpacity Float           @default(0.5)
+  watermarkPosition WatermarkPosition @default(BOTTOM_RIGHT)
+  
+  faceRecognitionEnabled Boolean   @default(false)
+  faceRecognitionStatus FaceRecStatus @default(PENDING)
+  
+  downloadEnabled  Boolean         @default(true)
+  bulkDownloadEnabled Boolean     @default(true)
+  
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+}
 ```
-app/
-├── api/
-│   ├── projects/
-│   │   ├── route.ts                 # GET, POST - List/Create projects
-│   │   ├── [id]/
-│   │   │   ├── route.ts             # GET, PATCH, DELETE - Project operations
-│   │   │   ├── images/
-│   │   │   │   └── route.ts         # GET - List project images
-│   │   │   └── share/
-│   │   │       ├── route.ts         # GET, POST - Share management
-│   │   │       └── [tokenId]/
-│   │   │           └── route.ts     # DELETE - Revoke share
-│   │   └── share/
-│   │       └── [token]/
-│   │           ├── route.ts         # GET - Validate token (public)
-│   │           └── images/
-│   │               └── route.ts     # GET - Get images (public)
-│   └── upload/
-│       └── route.ts                 # POST - Upload with project support
-├── projects/
-│   ├── page.tsx                     # Project list UI
-│   └── [id]/
-│       ├── page.tsx                 # Project detail UI
-│       ├── upload/
-│       │   └── page.tsx             # Project upload UI
-│       └── share/
-│           └── page.tsx             # Share management UI
-└── share/
-    └── [token]/
-        └── page.tsx                 # Client view (public, read-only)
+
+#### Audit Log Model
+```prisma
+model AuditLog {
+  id          String      @id @default(cuid())
+  action      AuditAction
+  entityType  String
+  entityId    String?
+  
+  oldValue    Json?
+  newValue    Json?
+  
+  userId      String?
+  userEmail   String?
+  userName    String?
+  userRole    Role?
+  
+  ipAddress   String?
+  userAgent   String?
+  description String?
+  
+  createdAt   DateTime    @default(now())
+
+  @@index([action])
+  @@index([entityType, entityId])
+  @@index([userId])
+  @@index([createdAt])
+}
+```
+
+### Enums
+```prisma
+enum ImageQuality {
+  LOW     // 1920px
+  MEDIUM  // 2560px
+  HIGH    // 4000px
+  ORIGINAL
+}
+
+enum VideoQuality {
+  LOW     // 720p
+  MEDIUM  // 1080p
+  HIGH    // 4K
+}
+
+enum ShortQuality {
+  LOW     // 720p
+  MEDIUM  // 1080p
+  HIGH    // 1440p
+}
+
+enum WatermarkPosition {
+  TOP_LEFT
+  TOP_RIGHT
+  BOTTOM_LEFT
+  BOTTOM_RIGHT
+  CENTER
+}
+
+enum FaceRecStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+  DISABLED
+}
+
+enum AccessLevel {
+  READ
+  WRITE
+  FULL
+}
+
+enum AuditAction {
+  USER_CREATED
+  USER_UPDATED
+  USER_DELETED
+  USER_LOGIN
+  USER_LOGOUT
+  PROJECT_CREATED
+  PROJECT_UPDATED
+  PROJECT_DELETED
+  ALBUM_CREATED
+  ALBUM_UPDATED
+  ALBUM_DELETED
+  SHARE_LINK_CREATED
+  SHARE_LINK_REVOKED
+  SHARE_LINK_ACCESSED
+  JOB_CREATED
+  JOB_STARTED
+  JOB_COMPLETED
+  JOB_FAILED
+  STORAGE_USAGE_CHANGED
+  QUOTA_EXCEEDED
+  ACCESS_GRANTED
+  ACCESS_REVOKED
+  ACCESS_MODIFIED
+  SETTINGS_UPDATED
+}
 ```
 
 ---
 
 ## Implementation Details
 
-### 1. Project Management
+### 1. PRO Profile Management
 
-#### Creating Projects
+#### Creating PRO Profile
+```typescript
+// POST /api/profile
+{
+  "businessName": "ABC Photography",
+  "location": "New York, NY",
+  "phone": "+1-555-123-4567",
+  "email": "contact@abcphoto.com",
+  "website": "https://abcphoto.com",
+  "facebook": "https://facebook.com/abcphoto",
+  "instagram": "https://instagram.com/abcphoto",
+  "twitter": "https://twitter.com/abcphoto",
+  "linkedin": "https://linkedin.com/in/abcphoto",
+  "portfolioUrl": "https://abcphoto.com/portfolio"
+}
+```
+
+#### Profile Page Features
+- Business name and logo upload
+- Location field with address
+- Contact details (phone, email)
+- Social media links (Facebook, Instagram, Twitter, LinkedIn)
+- Portfolio/previous works URL
+- Edit/Save functionality
+
+### 2. Project Enhancements
+
+#### Creating Enhanced Project
 ```typescript
 // POST /api/projects
 {
   "name": "Wedding Photography",
-  "description": "John & Jane Wedding - June 2024",
-  "quotaBytes": 10737418240  // 10GB (optional, defaults to 5GB)
+  "description": "John & Jane Wedding",
+  "eventName": "John & Jane Wedding",
+  "startDate": "2024-06-15T00:00:00Z",
+  "branding": true,
+  "watermarkImage": "https://...",
+  "coverImage": "https://...",
+  "quotaBytes": 10737418240
 }
 ```
 
-**Features**:
-- Automatic ownership assignment from session
-- Default 5GB quota
-- Storage usage calculated dynamically
+#### Project Fields
+- **name**: Project display name
+- **description**: Project description
+- **eventName**: Event/Project name for client display
+- **startDate**: Project/event start date
+- **branding**: Boolean toggle for enabling watermark/branding
+- **watermarkImage**: URL to watermark image
+- **coverImage**: URL to project cover image
+- **quotaBytes**: Storage quota (default 10GB)
 
-#### Storage Quota Calculation
+### 3. Share Service Popup
+
+After project creation, show popup with:
+- QR code generation for share link
+- Shareable URL display
+- Copy link button
+- Download QR code button
+- Social media share options
+
 ```typescript
-const images = await prisma.image.findMany({
-  where: { projectId: project.id },
-  select: { sizeBytes: true }
-})
+// Generate QR Code
+import QRCode from 'qrcode'
 
-const usedBytes = images.reduce((sum, img) => sum + img.sizeBytes, 0)
-const usagePercentage = (usedBytes / project.quotaBytes) * 100
-```
-
-### 2. Share Token System
-
-#### Token Generation
-```typescript
-import crypto from 'crypto'
-
-function generateToken(): string {
-  return crypto.randomBytes(32).toString('hex')
+const generateQRCode = async (url: string): Promise<string> => {
+  return await QRCode.toDataURL(url, {
+    width: 256,
+    margin: 2,
+    color: {
+      dark: '#000000',
+      light: '#ffffff'
+    }
+  })
 }
 ```
 
-**Security Features**:
-- 256-bit cryptographically random tokens
-- Optional expiry dates
-- Optional client email association
-- Access tracking (count, last accessed)
-- Read-only permissions enforced
+### 4. Album Settings
 
-#### Creating Share Links
+#### Settings Page
 ```typescript
-// POST /api/projects/[id]/share
+// PATCH /api/albums/[id]/settings
 {
-  "clientEmail": "client@example.com",  // Optional
-  "expiresAt": "2024-12-31T23:59:59Z"   // Optional
+  "imageQuality": "HIGH",
+  "videoQuality": "HIGH",
+  "shortQuality": "HIGH",
+  "maxImageWidth": 4000,
+  "maxImageHeight": 4000,
+  "watermarkEnabled": true,
+  "watermarkImage": "https://...",
+  "watermarkOpacity": 0.5,
+  "watermarkPosition": "BOTTOM_RIGHT",
+  "faceRecognitionEnabled": false,
+  "downloadEnabled": true,
+  "bulkDownloadEnabled": true
+}
+```
+
+#### Quality Presets
+| Quality | Image Width | Video Resolution | Shorts Resolution |
+|---------|------------|------------------|-------------------|
+| LOW     | 1920px     | 720p             | 720p              |
+| MEDIUM  | 2560px     | 1080p            | 1080p             |
+| HIGH    | 4000px     | 4K               | 1440p             |
+| ORIGINAL| Original   | Original         | Original          |
+
+#### Face Recognition Request
+When enabled, creates an AdminTask:
+```typescript
+// POST /api/albums/[id]/settings/face-recognition
+{
+  "enabled": true
+}
+
+// Creates AdminTask:
+{
+  "type": "FACE_RECOGNITION",
+  "albumId": "album_123",
+  "status": "PENDING"
+}
+```
+
+### 5. Client Access Management
+
+#### Granting Client Access
+```typescript
+// POST /api/projects/[id]/clients
+{
+  "userId": "user_client_123",
+  "accessLevel": "READ"
 }
 
 // Response
 {
-  "id": "share_123",
-  "token": "a1b2c3d4e5f6...",
-  "shareUrl": "http://localhost:3000/share/a1b2c3d4e5f6...",
-  "clientEmail": "client@example.com",
-  "expiresAt": "2024-12-31T23:59:59Z",
-  "accessCount": 0,
+  "id": "access_456",
+  "projectId": "proj_123",
+  "userId": "user_client_123",
+  "accessLevel": "READ",
+  "grantedById": "user_pro_789",
   "createdAt": "2024-06-01T00:00:00Z"
 }
 ```
 
-#### Token Validation
+#### Access Levels
+- **READ**: View images only
+- **WRITE**: View and upload images
+- **FULL**: Full control including delete
+
+#### Revoking Access
 ```typescript
-// GET /api/share/[token]
-
-// Validates:
-// 1. Token exists
-// 2. Not expired (if expiry set)
-// 3. Updates accessCount and lastAccessedAt
-
-// Returns project info without sensitive data
-{
-  "project": {
-    "id": "proj_123",
-    "name": "Wedding Photography",
-    "description": "...",
-    "owner": {
-      "name": "Photographer Name",
-      "email": "photo@example.com"
-    }
-  },
-  "permissions": {
-    "canUpload": false,
-    "canDelete": false
-  }
-}
+// DELETE /api/projects/[id]/clients/[userId]
 ```
 
-### 3. Quota Enforcement
+### 6. Audit Logging
 
-#### Pre-upload Check
+#### Creating Audit Log Entry
 ```typescript
-async function checkProjectQuota(
-  projectId: string, 
-  fileSize: number
-): Promise<{ allowed: boolean; currentUsage: number; quota: number }> {
-  
-  const project = await prisma.project.findUnique({
-    where: { id: projectId },
-    include: {
-      images: { select: { sizeBytes: true } }
+// Internal function
+async function createAuditLog(
+  action: AuditAction,
+  entityType: string,
+  entityId: string | null,
+  user: User | null,
+  oldValue?: any,
+  newValue?: any,
+  description?: string
+) {
+  return await prisma.auditLog.create({
+    data: {
+      action,
+      entityType,
+      entityId,
+      userId: user?.id,
+      userEmail: user?.email,
+      userName: user?.name,
+      userRole: user?.role,
+      oldValue: oldValue ? JSON.stringify(oldValue) : undefined,
+      newValue: newValue ? JSON.stringify(newValue) : undefined,
+      description
     }
   })
-
-  const currentUsage = project.images.reduce(
-    (sum, img) => sum + img.sizeBytes, 0
-  )
-  
-  const allowed = (currentUsage + fileSize) <= project.quotaBytes
-  
-  return { allowed, currentUsage, quota: project.quotaBytes }
 }
 ```
 
-#### Quota Exceeded Response
+#### Audit Log Queries
 ```typescript
-// HTTP 413 Payload Too Large
-{
-  "error": "Storage quota exceeded",
-  "code": "QUOTA_EXCEEDED",
-  "details": {
-    "quotaBytes": 5368709120,
-    "usedBytes": 4831838208,
-    "requestedBytes": 1048576000,
-    "availableBytes": 536870912
-  }
-}
+// GET /api/audit?action=PROJECT_CREATED&userId=user_123&from=2024-01-01&to=2024-12-31
+const auditLogs = await prisma.auditLog.findMany({
+  where: {
+    action: filters.action,
+    userId: filters.userId,
+    createdAt: {
+      gte: filters.from,
+      lte: filters.to
+    }
+  },
+  orderBy: { createdAt: 'desc' },
+  take: 100,
+  skip: paginationOffset
+})
 ```
 
-### 4. Project-scoped Uploads
+---
 
-#### Upload Endpoint
-```typescript
-// POST /api/upload
-// FormData:
-//   - file: File
-//   - projectId: string (optional)
-//   - title: string (optional)
+## API Architecture
 
-// With projectId:
-// 1. Verifies project ownership
-// 2. Checks quota
-// 3. Creates image with projectId
-// 4. Returns projectId in response
+### Protected Routes (Authentication Required)
+- `/api/profile` - PRO profile management
+- `/api/projects` - Project CRUD
+- `/api/projects/[id]/clients` - Client access
+- `/api/albums/[id]/settings` - Album settings
+- `/api/audit` - Audit logs (ADMIN/SUPERADMIN only)
+
+### Public Routes (No Authentication)
+- `/api/share/[token]` - Validate share token
+- `/api/share/[token]/images` - Get shared images
+
+---
+
+## File Structure
+
 ```
-
-#### UI Upload Flow
-1. User selects files (drag-drop or file picker)
-2. Pre-upload validation checks total size against quota
-3. Files uploaded sequentially
-4. Progress tracked per file
-5. Success/error states displayed
-6. Project quota refreshed after uploads
-
-### 5. Client View
-
-#### Public Access
-- **No authentication required**
-- **Read-only access** - No upload/delete buttons
-- **Clean interface** - Minimal, focused on images
-- **Owner attribution** - Shows who shared the project
-- **Expiry warnings** - Displays if link will expire
-
-#### Security Measures
-```typescript
-// Share page (/share/[token])
-// 1. Validates token on load
-// 2. Shows error if invalid/expired
-// 3. No edit capabilities
-// 4. No sensitive data exposed
+app/
+├── api/
+│   ├── profile/
+│   │   ├── route.ts           # GET, PATCH - Profile management
+│   │   └── logo/
+│   │       └── route.ts       # POST - Upload logo
+│   ├── projects/
+│   │   ├── [id]/
+│   │   │   ├── clients/
+│   │   │   │   └── [userId]/
+│   │   │   │       └── route.ts   # DELETE - Revoke access
+│   │   │   └── route.ts       # GET, PATCH, DELETE
+│   │   └── route.ts           # GET, POST
+│   ├── albums/
+│   │   └── [id]/
+│   │       └── settings/
+│   │           ├── route.ts   # GET, PATCH
+│   │           └── face-recognition/
+│   │               └── route.ts   # POST - Request face rec
+│   ├── audit/
+│   │   ├── route.ts           # GET - List logs (admin only)
+│   │   └── export/
+│   │       └── route.ts       # GET - Export logs
+│   └── share/
+│       └── [token]/
+│           ├── route.ts       # GET - Validate token
+│           └── images/
+│               └── route.ts   # GET - Get images
+├── profile/
+│   └── page.tsx               # PRO profile page
+├── admin/
+│   ├── audit/
+│   │   └── page.tsx           # Audit logs page
+│   └── page.tsx               # Admin dashboard
+└── share/
+    └── [token]/
+        └── page.tsx           # Client view (public)
 ```
 
 ---
 
 ## UI Components
 
-### Project List (`/projects`)
-- Grid of project cards
-- Storage usage visualization
-- Quick actions (share, delete)
-- Create project modal
+### PRO Profile Page (`/profile`)
+- Header with user info
+- Business name input
+- Logo upload with preview
+- Location input
+- Contact details form
+- Social media links inputs
+- Portfolio URL input
+- Save/Cancel buttons
+- Loading states
 
-### Project Detail (`/projects/[id]`)
-- Project header with description
-- Stats cards (images, storage, quota)
-- Image gallery
-- Edit/delete functionality
+### Project Creation Modal
+- Project name input
+- Description textarea
+- Event name input
+- Start date picker
+- Branding toggle
+- Watermark image upload
+- Cover image upload
+- Quota selector
+- Create button
 
-### Project Upload (`/projects/[id]/upload`)
-- Drag-and-drop zone
-- Multi-file selection
-- Real-time quota display
-- Progress tracking
-- Error handling
+### Share Service Popup
+- QR code display
+- Shareable URL input
+- Copy link button
+- Download QR button
+- Close button
+- Option to add client email
 
-### Share Management (`/projects/[id]/share`)
-- Active share links list
-- Create share dialog
-- Copy link functionality
-- Revoke shares
-- Access statistics
+### Album Settings Page (`/albums/[id]/settings`)
+- Upload preferences section
+  - Image quality dropdown
+  - Video quality dropdown
+  - Shorts quality dropdown
+- Resolution settings
+  - Max width input
+  - Max height input
+- Watermark section
+  - Enable toggle
+  - Image upload
+  - Opacity slider
+  - Position selector
+- Features section
+  - Face recognition toggle (with admin request)
+  - Download toggle
+  - Bulk download toggle
+- Save/Cancel buttons
 
-### Client View (`/share/[token]`)
-- Project title and description
-- Owner information
-- Image gallery
-- Read-only indicator
+### Client Access Panel
+- Client list table
+  - User name/email
+  - Access level
+  - Granted date
+  - Actions (revoke)
+- Grant access button
+  - User search/select
+  - Access level dropdown
+
+### Audit Log Page (`/admin/audit`)
+- Filter bar
+  - Date range picker
+  - Action type dropdown
+  - User filter
+  - Entity type filter
+- Audit log table
+  - Timestamp
+  - Action
+  - User
+  - Entity
+  - Description
+- Export button
+- Pagination
 
 ---
 
 ## Security Considerations
 
 ### 1. Authentication
-- All project operations require valid session
+- All profile operations require valid session
 - Middleware validates JWT tokens
 - Ownership verified on every request
 
 ### 2. Authorization
 ```typescript
-// Example: Project access check
-const project = await prisma.project.findFirst({
-  where: { 
-    id: params.id,
-    ownerId: session.user.id  // Ensures ownership
-  }
+// Profile access check
+const profile = await prisma.proProfile.findFirst({
+  where: { userId: session.user.id }
 })
+
+// Album settings access check (owner, project owner, admin, superadmin)
+const hasSettingsAccess = await checkAlbumSettingsAccess(user, album)
 ```
 
-### 3. Share Token Security
-- Tokens are cryptographically random (256-bit)
-- Optional expiry prevents indefinite access
-- Access tracking for audit trail
-- No sensitive data in public endpoints
+### 3. Audit Trail
+- All sensitive operations logged
+- User identification on every entry
+- IP and user agent captured
 
-### 4. Quota Enforcement
-- Server-side validation prevents bypassing
-- Returns detailed error information
-- UI prevents exceeding quota client-side
+### 4. Client Access
+- Only users in the system can be granted access
+- Access level enforced on API routes
+- Revocation immediate
 
 ---
 
@@ -373,34 +626,45 @@ const project = await prisma.project.findFirst({
 
 ### Manual Testing Checklist
 
-#### Project Management
-- [ ] Create project with name and description
-- [ ] Edit project name/description
-- [ ] Delete project (confirms cascade delete)
-- [ ] View project list with storage usage
-- [ ] Verify quota display accuracy
+#### PRO Profile
+- [ ] Create profile with all fields
+- [ ] Upload logo image
+- [ ] Update profile information
+- [ ] View profile as different users
 
-#### Upload
-- [ ] Upload single image to project
-- [ ] Upload multiple images
-- [ ] Verify quota decreases correctly
-- [ ] Test quota exceeded error
-- [ ] Verify images appear in project
+#### Project Management
+- [ ] Create project with new fields
+- [ ] Edit project branding toggle
+- [ ] Upload cover image
+- [ ] Set start date
+- [ ] Delete project
 
 #### Sharing
-- [ ] Create share link without expiry
-- [ ] Create share link with expiry
-- [ ] Create share link with client email
-- [ ] Copy share URL to clipboard
+- [ ] Create share link
+- [ ] Generate QR code
+- [ ] Download QR code
+- [ ] Access share link
 - [ ] Revoke share link
-- [ ] Access share link as unauthenticated user
 
-#### Client View
-- [ ] Access valid share link
-- [ ] Verify read-only (no upload/delete)
-- [ ] Verify project info displays
-- [ ] Test expired link shows error
-- [ ] Test invalid link shows error
+#### Album Settings
+- [ ] Update upload quality settings
+- [ ] Configure watermark
+- [ ] Toggle face recognition (creates task)
+- [ ] Toggle download options
+
+#### Client Access
+- [ ] Grant client read access
+- [ ] Grant client write access
+- [ ] View client's access
+- [ ] Revoke client access
+- [ ] Client accesses project
+
+#### Audit Logs
+- [ ] View audit logs (as admin)
+- [ ] Filter by action type
+- [ ] Filter by date range
+- [ ] Filter by user
+- [ ] Export logs
 
 ### API Testing
 
@@ -409,58 +673,24 @@ const project = await prisma.project.findFirst({
 curl -X POST http://localhost:3000/api/projects \
   -H "Content-Type: application/json" \
   -H "Cookie: next-auth.session-token=..." \
-  -d '{"name": "Test Project", "quotaBytes": 10737418240}'
+  -d '{"name": "Test Project", "eventName": "Test Event", "startDate": "2024-06-15T00:00:00Z", "branding": true}'
 
-# Create share token
-curl -X POST http://localhost:3000/api/projects/[id]/share \
+# Update PRO profile
+curl -X PATCH http://localhost:3000/api/profile \
   -H "Content-Type: application/json" \
   -H "Cookie: next-auth.session-token=..." \
-  -d '{"clientEmail": "test@example.com", "expiresAt": "2024-12-31T23:59:59Z"}'
+  -d '{"businessName": "ABC Photography", "location": "New York"}'
 
-# Access public share (no auth needed)
-curl http://localhost:3000/api/share/[token]
+# Grant client access
+curl -X POST http://localhost:3000/api/projects/proj_123/clients \
+  -H "Content-Type: application/json" \
+  -H "Cookie: next-auth.session-token=..." \
+  -d '{"userId": "user_client_123", "accessLevel": "READ"}'
+
+# Get audit logs (admin only)
+curl http://localhost:3000/api/audit \
+  -H "Cookie: next-auth.session-token=..."
 ```
-
----
-
-## Configuration
-
-### Environment Variables
-```env
-# Required for share URLs
-NEXTAUTH_URL=http://localhost:3000
-
-# Database (PostgreSQL with Prisma)
-DATABASE_URL="postgresql://postgres:password@localhost:5432/frame?schema=public"
-
-# Authentication
-NEXTAUTH_SECRET=your-secret-key
-```
-
-### Default Quotas
-- **Default Project Quota**: 5GB (5,368,709,120 bytes)
-- Can be customized per project during creation
-
----
-
-## Performance Considerations
-
-### 1. Database Indexes
-```prisma
-@@index([ownerId])      // Fast project lookup by owner
-@@index([projectId])    // Fast image lookup by project
-@@index([token])        // Fast share token lookup
-@@index([expiresAt])    // Fast expiry queries
-```
-
-### 2. Quota Calculation
-- Calculated on-demand for accuracy
-- Could be optimized with materialized views for large projects
-
-### 3. File Uploads
-- Streaming upload to temp storage
-- Progress tracking via UI state
-- Concurrent uploads handled sequentially
 
 ---
 
@@ -471,17 +701,19 @@ NEXTAUTH_SECRET=your-secret-key
 | Error Code | HTTP Status | Description |
 |------------|-------------|-------------|
 | `UNAUTHORIZED` | 401 | Missing or invalid authentication |
-| `PROJECT_NOT_FOUND` | 404 | Project doesn't exist or no access |
-| `QUOTA_EXCEEDED` | 413 | Upload would exceed storage quota |
-| `INVALID_SHARE_TOKEN` | 404 | Share token doesn't exist |
-| `SHARE_EXPIRED` | 410 | Share token has expired |
+| `FORBIDDEN` | 403 | Insufficient permissions |
+| `PROJECT_NOT_FOUND` | 404 | Project doesn't exist |
+| `ALBUM_NOT_FOUND` | 404 | Album doesn't exist |
+| `USER_NOT_FOUND` | 404 | User doesn't exist |
+| `ACCESS_DENIED` | 403 | Cannot access this resource |
+| `QUOTA_EXCEEDED` | 413 | Storage quota exceeded |
 
 ### Error Response Format
 ```typescript
 {
   "error": "Human-readable message",
   "code": "ERROR_CODE",
-  "details?: { ... }  // Additional context
+  "details?: { ... }
 }
 ```
 
@@ -492,29 +724,64 @@ NEXTAUTH_SECRET=your-secret-key
 ### Database Migration
 ```bash
 # Phase 4 migration creates:
-# - Project table
-# - ShareToken table
-# - Updates Image table with projectId and ownerId
+# - ProProfile table
+# - ClientProjectAccess table
+# - ClientAlbumAccess table
+# - AlbumSettings table
+# - AuditLog table
+# - Updates Project table with new fields
 
-npx prisma migrate dev --name phase_4_projects
+npx prisma migrate dev --name phase_4_pro_features
 ```
 
 ### Breaking Changes
-- Upload API now requires authentication
-- Collection unique constraint updated to include ownerId
-- Image model now requires ownerId
+- AlbumSettings requires migration
+- AuditLog requires new indexes
+- Project model enhanced with new fields
 
 ---
 
-## Future Enhancements
+## Performance Considerations
 
-### Phase 5+ Considerations
-- Watermarking for client previews
-- Download all images as ZIP
-- Client comments/approvals
-- Multiple client access levels
-- Project templates
-- Batch move images between projects
+### 1. Database Indexes
+```prisma
+@@index([userId])           // ProProfile lookup
+@@index([projectId, userId]) // Client access lookup
+@@index([albumId])          // Album settings lookup
+@@index([action])            // Audit log filtering
+@@index([createdAt])         // Audit log date filtering
+```
+
+### 2. Pagination
+- Audit logs paginated (100 per page)
+- Client list paginated (20 per page)
+- Project list paginated
+
+### 3. Caching
+- Share token validation cached briefly
+- Profile data cached
+
+---
+
+## Configuration
+
+### Environment Variables
+```env
+# Required for share URLs
+NEXTAUTH_URL=http://localhost:3000
+
+# Database
+DATABASE_URL="postgresql://postgres:password@localhost:5432/frame?schema=public"
+
+# Authentication
+NEXTAUTH_SECRET=your-secret-key
+```
+
+### Default Settings
+- **Default Project Quota**: 10GB
+- **Default Image Quality**: HIGH (4000px)
+- **Default Video Quality**: HIGH (4K)
+- **Default Download**: Enabled
 
 ---
 
@@ -524,24 +791,23 @@ npx prisma migrate dev --name phase_4_projects
 - **Phase 3 Auth**: `.ai/contracts/phase-3-auth.md`
 - **Phase 1 Ingestion**: `.ai/contracts/phase-1-ingestion.md`
 - **Database Schema**: `prisma/schema.prisma`
-- **Implementation Plan**: `.ai/implementation/phase-4-implementation.md`
 
 ---
 
 ## Success Criteria ✅
 
-All criteria met:
-- [x] Projects can be created with quotas
-- [x] Images can be uploaded to specific projects
-- [x] Quota enforcement blocks overages
-- [x] Share links can be created with optional expiry
-- [x] Clients can view shared projects without authentication
+- [x] PRO profiles can be created and managed
+- [x] Projects have event details, branding, cover images
+- [x] Share links include QR code generation
+- [x] Album settings control upload quality and features
+- [x] Client access can be granted and revoked
+- [x] Audit logs track all critical operations
+- [x] ADMIN/SUPERADMIN can view audit logs
 - [x] All operations are secure and ownership-verified
-- [x] UI provides clear feedback on quota usage
-- [x] Read-only access enforced for clients
+- [x] Read-only client access enforced
 
 ---
 
-**Last Updated**: 2026-02-16  
-**Version**: 1.0.0  
+**Last Updated**: 2026-02-18  
+**Version**: 2.0.0  
 **Status**: Production Ready

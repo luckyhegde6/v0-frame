@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import { useEffect, useState } from 'react'
-import { ChevronRight, Home, Shield, Image, Upload, ArrowLeft, FolderOpen, Play, BookOpen, Settings, Loader2, Layers, Star, Share2 } from 'lucide-react'
+import { ChevronRight, Home, Shield, Image, Upload, ArrowLeft, FolderOpen, Play, BookOpen, Settings, Loader2, Layers, Star, Share2, User, FileText, Users } from 'lucide-react'
 import { UserNav } from './user-nav'
 import { NotificationBell } from './notification-bell'
 import { cn } from '@/lib/utils'
@@ -34,9 +34,11 @@ function getPageTitle(pathname: string): string {
   if (pathname === '/') return 'Home'
   if (pathname === '/gallery') return 'Gallery'
   if (pathname === '/upload') return 'Upload'
+  if (pathname === '/profile') return 'Profile'
   if (pathname === '/projects') return 'Projects'
   if (pathname === '/albums') return 'Albums'
   if (pathname === '/favorites') return 'Favorites'
+  if (pathname === '/admin/audit') return 'Audit Logs'
   if (pathname.startsWith('/admin')) return 'Admin'
   return 'FRAME'
 }
@@ -196,13 +198,77 @@ export function Header() {
                     href="/admin/projects"
                     className={cn(
                       "flex items-center gap-2 text-sm font-medium transition-colors hover:text-primary",
-                      isProjectsPage ? "text-primary" : "text-muted-foreground"
+                      pathname.startsWith('/admin/projects') ? "text-primary" : "text-muted-foreground"
                     )}
                   >
                     <FolderOpen className="w-4 h-4" />
                     Projects
                   </Link>
+                  <Link
+                    href="/projects"
+                    className={cn(
+                      "flex items-center gap-2 text-sm font-medium transition-colors hover:text-primary",
+                      pathname === '/projects' ? "text-primary" : "text-muted-foreground"
+                    )}
+                  >
+                    <FolderOpen className="w-4 h-4" />
+                    My Projects
+                  </Link>
+                  <Link
+                    href="/admin/albums"
+                    className={cn(
+                      "flex items-center gap-2 text-sm font-medium transition-colors hover:text-primary",
+                      pathname.startsWith('/admin/albums') ? "text-primary" : "text-muted-foreground"
+                    )}
+                  >
+                    <Layers className="w-4 h-4" />
+                    Albums
+                  </Link>
+                  <Link
+                    href="/admin/gallery"
+                    className={cn(
+                      "flex items-center gap-2 text-sm font-medium transition-colors hover:text-primary",
+                      pathname.startsWith('/admin/gallery') ? "text-primary" : "text-muted-foreground"
+                    )}
+                  >
+                    <Image className="w-4 h-4" />
+                    Gallery
+                  </Link>
+                  <Link
+                    href="/admin/users"
+                    className={cn(
+                      "flex items-center gap-2 text-sm font-medium transition-colors hover:text-primary",
+                      pathname.startsWith('/admin/users') ? "text-primary" : "text-muted-foreground"
+                    )}
+                  >
+                    <Users className="w-4 h-4" />
+                    Users
+                  </Link>
+                  <Link
+                    href="/admin/audit"
+                    className={cn(
+                      "flex items-center gap-2 text-sm font-medium transition-colors hover:text-primary",
+                      pathname.startsWith('/admin/audit') ? "text-primary" : "text-muted-foreground"
+                    )}
+                  >
+                    <FileText className="w-4 h-4" />
+                    Audit
+                  </Link>
                 </>
+              )}
+
+              {/* PRO: Show profile link */}
+              {isPro && (
+                <Link
+                  href="/profile"
+                  className={cn(
+                    "flex items-center gap-2 text-sm font-medium transition-colors hover:text-primary",
+                    pathname === '/profile' ? "text-primary" : "text-muted-foreground"
+                  )}
+                >
+                  <User className="w-4 h-4" />
+                  Profile
+                </Link>
               )}
             </nav>
           </div>

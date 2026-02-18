@@ -108,7 +108,7 @@ model User {
   email         String?   @unique
   emailVerified DateTime?
   image         String?
-  password      String?   // For Credentials provider
+  password      String?
   role          Role      @default(USER)
   
   accounts      Account[]
@@ -121,6 +121,12 @@ model User {
   adminTasks    AdminTask[]
   albums        Album[]
   projectAccess ProjectAccess[]
+  proProfile    ProProfile?
+  clientProjectAccess    ClientProjectAccess[] @relation("UserRelation")
+  clientAlbumAccess      ClientAlbumAccess[]   @relation("UserRelation")
+  auditLogs               AuditLog[]
+  grantedProjectAccess   ClientProjectAccess[] @relation("GrantedByRelation")
+  grantedAlbumAccess     ClientAlbumAccess[]   @relation("GrantedByAlbumRelation")
 
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
@@ -136,25 +142,34 @@ model VerificationToken {
 
 // Phase 4: Professional Projects
 model Project {
-  id          String   @id @default(cuid())
-  name        String
-  description String?
+  id             String   @id @default(cuid())
+  name           String
+  description    String?
+  
+  // Event/Project details
+  eventName      String?
+  startDate      DateTime?
+  branding       Boolean  @default(false)
+  watermarkImage String?
+  coverImage     String?
   
   // Storage management (in bytes)
-  quotaBytes  BigInt   @default(10737418240) // 10GB default
-  storageUsed BigInt   @default(0)
+  quotaBytes     BigInt   @default(10737418240) // 10GB default
+  storageUsed    BigInt   @default(0)
   
   // Ownership
-  ownerId     String
-  owner       User     @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  ownerId        String
+  owner          User     @relation(fields: [ownerId], references: [id], onDelete: Cascade)
   
   // Relations
-  images      ProjectImage[]
-  shareTokens ShareToken[]
-  accessList ProjectAccess[]
+  images         ProjectImage[]
+  shareTokens    ShareToken[]
+  accessList     ProjectAccess[]
+  clientAccess   ClientProjectAccess[]
+  albums        Album[]
   
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
   @@unique([name, ownerId])
   @@index([ownerId])
@@ -165,6 +180,26 @@ enum AccessLevel {
   READ
   WRITE
   FULL
+}
+
+// Client Project Access
+model ClientProjectAccess {
+  id          String        @id @default(cuid())
+  projectId   String
+  project     Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User          @relation("UserRelation", fields: [userId], references: [id], onDelete: Cascade)
+  accessLevel AccessLevel   @default(READ)
+  
+  grantedById String
+  grantedBy   User          @relation("GrantedByRelation", fields: [grantedById], references: [id], onDelete: Cascade)
+  
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  @@unique([projectId, userId])
+  @@index([projectId])
+  @@index([userId])
 }
 
 model ProjectAccess {
@@ -202,8 +237,14 @@ model Album {
   ownerId     String
   owner       User         @relation(fields: [ownerId], references: [id], onDelete: Cascade)
   
+  // Project relation
+  projectId   String?
+  project     Project?     @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  
   // Relations
   images      AlbumImage[]
+  settings    AlbumSettings?
+  clientAccess ClientAlbumAccess[]
   
   coverImage  String?
   
@@ -212,6 +253,7 @@ model Album {
 
   @@unique([name, ownerId])
   @@index([ownerId])
+  @@index([projectId])
 }
 
 // Album-Image many-to-many relationship
@@ -229,6 +271,75 @@ model AlbumImage {
   @@index([imageId])
 }
 
+// Quality Enums
+enum ImageQuality {
+  LOW     // 1920px
+  MEDIUM  // 2560px
+  HIGH    // 4000px
+  ORIGINAL
+}
+
+enum VideoQuality {
+  LOW     // 720p
+  MEDIUM  // 1080p
+  HIGH    // 4K
+}
+
+enum ShortQuality {
+  LOW     // 720p
+  MEDIUM  // 1080p
+  HIGH    // 1440p
+}
+
+enum WatermarkPosition {
+  TOP_LEFT
+  TOP_RIGHT
+  BOTTOM_LEFT
+  BOTTOM_RIGHT
+  CENTER
+}
+
+enum FaceRecStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+  DISABLED
+}
+
+// Album Settings
+model AlbumSettings {
+  id              String           @id @default(cuid())
+  albumId         String           @unique
+  album           Album            @relation(fields: [albumId], references: [id], onDelete: Cascade)
+  
+  // Upload preferences
+  imageQuality    ImageQuality     @default(HIGH)
+  videoQuality   VideoQuality     @default(HIGH)
+  shortQuality   ShortQuality     @default(HIGH)
+  
+  // Resolution settings
+  maxImageWidth  Int              @default(4000)
+  maxImageHeight Int              @default(4000)
+  
+  // Watermark
+  watermarkEnabled Boolean         @default(false)
+  watermarkImage  String?
+  watermarkOpacity Float          @default(0.5)
+  watermarkPosition WatermarkPosition @default(BOTTOM_RIGHT)
+  
+  // Features
+  faceRecognitionEnabled Boolean   @default(false)
+  faceRecognitionStatus FaceRecStatus @default(PENDING)
+  
+  // Download
+  downloadEnabled  Boolean         @default(true)
+  bulkDownloadEnabled Boolean     @default(true)
+  
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+}
+
 // Project-Image many-to-many relationship
 model ProjectImage {
   id        String   @id @default(cuid())
@@ -242,6 +353,122 @@ model ProjectImage {
   @@unique([projectId, imageId])
   @@index([projectId])
   @@index([imageId])
+}
+
+// Client Album Access
+model ClientAlbumAccess {
+  id          String        @id @default(cuid())
+  albumId     String
+  album       Album         @relation(fields: [albumId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User          @relation("UserRelation", fields: [userId], references: [id], onDelete: Cascade)
+  accessLevel AccessLevel   @default(READ)
+  
+  grantedById String
+  grantedBy   User          @relation("GrantedByAlbumRelation", fields: [grantedById], references: [id], onDelete: Cascade)
+  
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  @@unique([albumId, userId])
+  @@index([albumId])
+  @@index([userId])
+}
+
+// PRO Profile
+model ProProfile {
+  id              String   @id @default(cuid())
+  userId          String   @unique
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  businessName    String?
+  logo            String?
+  location        String?
+  phone           String?
+  email           String?
+  website         String?
+  bio             String?
+  facebook        String?
+  instagram       String?
+  twitter         String?
+  linkedin        String?
+  portfolioUrl    String?
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+// Audit Action Enum
+enum AuditAction {
+  // User actions
+  USER_CREATED
+  USER_UPDATED
+  USER_DELETED
+  USER_LOGIN
+  USER_LOGOUT
+  
+  // Project actions
+  PROJECT_CREATED
+  PROJECT_UPDATED
+  PROJECT_DELETED
+  
+  // Album actions
+  ALBUM_CREATED
+  ALBUM_UPDATED
+  ALBUM_DELETED
+  
+  // Share actions
+  SHARE_LINK_CREATED
+  SHARE_LINK_REVOKED
+  SHARE_LINK_ACCESSED
+  
+  // Job actions
+  JOB_CREATED
+  JOB_STARTED
+  JOB_COMPLETED
+  JOB_FAILED
+  
+  // Storage actions
+  STORAGE_USAGE_CHANGED
+  QUOTA_EXCEEDED
+  
+  // Access actions
+  ACCESS_GRANTED
+  ACCESS_REVOKED
+  ACCESS_MODIFIED
+  
+  // Settings actions
+  SETTINGS_UPDATED
+}
+
+// Audit Log
+model AuditLog {
+  id          String      @id @default(cuid())
+  action      AuditAction
+  entityType  String
+  entityId    String?
+  
+  // Changes
+  oldValue    Json?
+  newValue    Json?
+  
+  // User info
+  userId      String?
+  user        User?       @relation(fields: [userId], references: [id], onDelete: SetNull)
+  userEmail   String?
+  userName    String?
+  userRole    Role?
+  
+  // Metadata
+  ipAddress   String?
+  userAgent   String?
+  description String?
+  
+  createdAt   DateTime    @default(now())
+
+  @@index([action])
+  @@index([entityType, entityId])
+  @@index([userId])
+  @@index([createdAt])
 }
 
 // Phase 4: Client Sharing

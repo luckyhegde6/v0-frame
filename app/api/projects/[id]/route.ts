@@ -14,10 +14,13 @@ export async function GET(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
+    const userRole = session.user.role
+    const isAdmin = userRole === 'ADMIN' || userRole === 'SUPERADMIN'
+
     const project = await prisma.project.findFirst({
       where: { 
         id,
-        ownerId: session.user.id 
+        ...(isAdmin ? {} : { ownerId: session.user.id })
       },
       include: {
         _count: {
@@ -45,8 +48,13 @@ export async function GET(
         id: project.id,
         name: project.name,
         description: project.description,
+        eventName: project.eventName,
+        startDate: project.startDate,
+        branding: project.branding,
+        watermarkImage: project.watermarkImage,
+        coverImage: project.coverImage,
         imageCount: project._count.images,
-        storageQuota: project.quotaBytes,
+        storageQuota: project.quotaBytes.toString(),
         storageUsed: totalSize,
         createdAt: project.createdAt,
         updatedAt: project.updatedAt

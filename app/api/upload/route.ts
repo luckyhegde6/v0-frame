@@ -31,13 +31,15 @@ export async function POST(request: NextRequest) {
     const collectionName = formData.get('collection') as string;
     const collectionIdsRaw = formData.get('collectionIds') as string;
     const projectId = formData.get('projectId') as string;
+    const albumId = formData.get('albumId') as string;
 
     console.log('[Upload API] Payload:', {
       fileName: file?.name,
       title,
       collectionName,
       hasCollectionIds: !!collectionIdsRaw,
-      hasProjectId: !!projectId
+      hasProjectId: !!projectId,
+      hasAlbumId: !!albumId
     });
 
     let collectionIds: string[] = [];
@@ -139,7 +141,26 @@ export async function POST(request: NextRequest) {
         await prisma.project.update({
           where: { id: projectId },
           data: {
-            storageUsed: project.storageUsed + image.sizeBytes
+            storageUsed: { increment: BigInt(image.sizeBytes) }
+          }
+        })
+      }
+    }
+
+    // 6c. Link to album if albumId provided
+    if (albumId) {
+      const album = await prisma.album.findFirst({
+        where: {
+          id: albumId,
+          ownerId: userId
+        }
+      })
+
+      if (album) {
+        await prisma.albumImage.create({
+          data: {
+            albumId,
+            imageId: image.id
           }
         })
       }

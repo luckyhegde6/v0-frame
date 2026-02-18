@@ -1,6 +1,11 @@
 ignoredBuiltDependencies:
+  - '@scarf/scarf'
+  - '@tree-sitter-grammars/tree-sitter-yaml'
   - better-sqlite3
+  - core-js-pure
   - libpq
+  - tree-sitter
+  - tree-sitter-json
 
 onlyBuiltDependencies:
   - '@prisma/engines'

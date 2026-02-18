@@ -228,6 +228,35 @@ Required in `.env`:
 - `DATABASE_URL` or `POSTGRES_PRISMA_URL` - PostgreSQL connection
 - Check `.env.example` for all required variables
 
+### Phase 4 - PRO Features & Projects
+
+#### PRO Profile
+- Profile page at `/profile` for PRO users
+- Business fields: name, logo, location, contact, social links, portfolio
+- Use `ProProfile` model with user relation
+
+#### Project Enhancements
+- New fields: `eventName`, `startDate`, `branding`, `watermarkImage`, `coverImage`
+- Use BigInt for storage quotas (`quotaBytes`, `storageUsed`)
+- Share service popup with QR code generation
+
+#### Album Settings
+- Settings page at `/albums/[id]/settings`
+- Quality enums: `ImageQuality`, `VideoQuality`, `ShortQuality`
+- Watermark configuration with position and opacity
+- Face recognition toggle creates `AdminTask` for processing
+
+#### Client Access Management
+- `ClientProjectAccess` and `ClientAlbumAccess` models
+- Access levels: `READ`, `WRITE`, `FULL`
+- Grant/revoke through project detail page
+
+#### Audit Logging
+- `AuditLog` model for tracking all operations
+- Actions: `PROJECT_CREATED`, `ALBUM_DELETED`, `USER_LOGIN`, etc.
+- Audit page at `/admin/audit` for ADMIN/SUPERADMIN only
+- Filter by action, user, entity, date range
+
 ## Agent Principles
 
 1. **Correctness > Features** - Ensure code works before adding features

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth/auth'
 import prisma from '@/lib/prisma'
+import { logProjectCreated } from '@/lib/audit'
 
 function serializeBigInt(obj: unknown): unknown {
   if (obj === null || obj === undefined) return obj
@@ -22,11 +23,25 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
+    const userRole = session.user.role
+    
+    // ADMIN and SUPERADMIN can see all projects
+    let whereClause = {}
+    if (userRole !== 'ADMIN' && userRole !== 'SUPERADMIN') {
+      whereClause = { ownerId: session.user.id }
+    }
+
     const projects = await prisma.project.findMany({
-      where: { ownerId: session.user.id },
+      where: whereClause,
       include: {
+        owner: {
+          select: { id: true, name: true, email: true }
+        },
         _count: {
           select: { images: true }
+        },
+        albums: {
+          select: { id: true }
         }
       },
       orderBy: { updatedAt: 'desc' }
@@ -36,7 +51,15 @@ export async function GET(request: NextRequest) {
       id: p.id,
       name: p.name,
       description: p.description,
+      eventName: p.eventName,
+      startDate: p.startDate,
+      branding: p.branding,
+      coverImage: p.coverImage,
+      ownerId: p.ownerId,
+      ownerName: p.owner.name,
+      ownerEmail: p.owner.email,
       imageCount: p._count.images,
+      albumCount: p.albums.length,
       storageQuota: p.quotaBytes.toString(),
       storageUsed: p.storageUsed.toString(),
       createdAt: p.createdAt,
@@ -62,7 +85,16 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { name, description, quotaBytes } = body
+    const { 
+      name, 
+      description, 
+      quotaBytes,
+      eventName,
+      startDate,
+      branding,
+      watermarkImage,
+      coverImage
+    } = body
 
     if (!name || typeof name !== 'string' || name.trim().length === 0) {
       return NextResponse.json(
@@ -90,9 +122,16 @@ export async function POST(request: NextRequest) {
         name: name.trim(),
         description: description?.trim() || null,
         quotaBytes: BigInt(quotaBytes || '10737418240'),
-        ownerId: session.user.id
+        ownerId: session.user.id,
+        eventName: eventName?.trim() || null,
+        startDate: startDate ? new Date(startDate) : null,
+        branding: branding || false,
+        watermarkImage: watermarkImage || null,
+        coverImage: coverImage || null
       }
     })
+
+    await logProjectCreated(project.id, session.user.id, { name: project.name, eventName: project.eventName })
 
     return NextResponse.json({
       project: {

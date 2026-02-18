@@ -80,7 +80,19 @@ export async function GET(request: NextRequest) {
       orderBy: { createdAt: 'desc' }
     })
 
-    return NextResponse.json({ shares })
+    const serializedShares = shares.map(share => ({
+      id: share.id,
+      token: share.token,
+      projectId: share.projectId,
+      projectName: share.project?.name,
+      expiresAt: share.expiresAt?.toISOString() || null,
+      maxAccesses: share.maxAccesses,
+      accessCount: share.accessCount,
+      createdById: share.createdById,
+      createdAt: share.createdAt.toISOString()
+    }))
+
+    return NextResponse.json({ shares: serializedShares })
   } catch (error) {
     console.error('Failed to fetch shares:', error)
     return NextResponse.json({ error: 'Failed to fetch shares' }, { status: 500 })

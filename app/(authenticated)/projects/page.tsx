@@ -1,27 +1,54 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { Folder, Plus, MoreVertical, Pencil, Trash2, Share2, Image, Loader2, ArrowLeft, Search } from 'lucide-react'
+import { useEffect, useState, useRef } from 'react'
+import { Folder, Plus, MoreVertical, Pencil, Trash2, Share2, Image, Loader2, ArrowLeft, Search, Copy, QrCode, X, ExternalLink, Settings, FolderOpen } from 'lucide-react'
 import Link from 'next/link'
 import { handleApiError, showSuccess, showWarning } from '@/lib/error-handler'
+import QRCode from 'qrcode'
 
 interface Project {
   id: string
   name: string
   description: string | null
+  eventName?: string | null
+  startDate?: string | null
+  branding?: boolean
+  coverImage?: string | null
   imageCount: number
+  albumCount?: number
   storageQuota: string
   storageUsed: string
+}
+
+interface ShareLink {
+  id: string
+  token: string
+  projectId: string
+  projectName: string
+  expiresAt: string | null
+  maxAccesses: number | null
+  accessCount: number
+  createdAt: string
 }
 
 export default function ProjectsPage() {
   const [projects, setProjects] = useState<Project[]>([])
   const [loading, setLoading] = useState(true)
   const [showCreateModal, setShowCreateModal] = useState(false)
+  const [showShareModal, setShowShareModal] = useState(false)
   const [newProjectName, setNewProjectName] = useState('')
   const [newProjectDesc, setNewProjectDesc] = useState('')
+  const [newEventName, setNewEventName] = useState('')
+  const [newStartDate, setNewStartDate] = useState('')
+  const [newBranding, setNewBranding] = useState(false)
   const [creating, setCreating] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
+  const [createdProject, setCreatedProject] = useState<Project | null>(null)
+  const [shareLink, setShareLink] = useState<ShareLink | null>(null)
+  const [qrCodeUrl, setQrCodeUrl] = useState<string>('')
+  const [copied, setCopied] = useState(false)
+  const [sharingProjectId, setSharingProjectId] = useState<string | null>(null)
+  const qrCanvasRef = useRef<HTMLCanvasElement>(null)
 
   const fetchProjects = async () => {
     try {
@@ -51,7 +78,10 @@ export default function ProjectsPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name: newProjectName.trim(),
-          description: newProjectDesc.trim() || undefined
+          description: newProjectDesc.trim() || undefined,
+          eventName: newEventName.trim() || undefined,
+          startDate: newStartDate || undefined,
+          branding: newBranding
         })
       })
 
@@ -60,15 +90,74 @@ export default function ProjectsPage() {
         throw new Error(data.error || 'Failed to create project')
       }
 
+      const data = await response.json()
       showSuccess('Project created successfully!')
+      
+      setCreatedProject(data.project)
       setShowCreateModal(false)
       setNewProjectName('')
       setNewProjectDesc('')
+      setNewEventName('')
+      setNewStartDate('')
+      setNewBranding(false)
+      
+      await createShareLink(data.project.id)
       fetchProjects()
     } catch (error) {
       handleApiError(error, 'CreateProject')
     } finally {
       setCreating(false)
+    }
+  }
+
+  const createShareLink = async (projectId: string) => {
+    try {
+      const response = await fetch('/api/share', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ projectId })
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        setShareLink(data.share)
+        setShowShareModal(true)
+        
+        const baseUrl = window.location.origin
+        const shareUrl = `${baseUrl}/share/${data.share.token}`
+        
+        if (qrCanvasRef.current) {
+          QRCode.toCanvas(qrCanvasRef.current, shareUrl, { 
+            width: 200,
+            margin: 2,
+            color: {
+              dark: '#000000',
+              light: '#ffffff'
+            }
+          })
+        }
+        
+        setQrCodeUrl(shareUrl)
+      }
+    } catch (error) {
+      console.error('Failed to create share link:', error)
+    }
+  }
+
+  const handleCopyLink = () => {
+    if (qrCodeUrl) {
+      navigator.clipboard.writeText(qrCodeUrl)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    }
+  }
+
+  const handleDownloadQR = () => {
+    if (qrCanvasRef.current) {
+      const link = document.createElement('a')
+      link.download = `qr-code-${createdProject?.name || 'project'}.png`
+      link.href = qrCanvasRef.current.toDataURL('image/png')
+      link.click()
     }
   }
 
@@ -156,15 +245,37 @@ export default function ProjectsPage() {
         ) : filteredProjects.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {filteredProjects.map((project) => (
-              <div key={project.id} className="p-6 bg-card border border-border rounded-lg hover:border-primary/50 transition-colors">
+              <div key={project.id} className="p-6 bg-card border border-border rounded-lg hover:border-primary/50 transition-colors group">
                 <div className="flex items-start justify-between mb-4">
-                  <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center">
-                    <Folder className="w-6 h-6 text-primary" />
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <button className="p-2 hover:bg-muted rounded-lg transition-colors">
+                  <Link href={`/projects/${project.id}`} className="flex items-start gap-3 flex-1">
+                    <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                      <Folder className="w-6 h-6 text-primary" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <h3 className="font-semibold mb-1 truncate">{project.name}</h3>
+                      {project.description && (
+                        <p className="text-sm text-muted-foreground line-clamp-2">
+                          {project.description}
+                        </p>
+                      )}
+                    </div>
+                  </Link>
+                  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button 
+                      onClick={() => {
+                        setCreatedProject(project)
+                        createShareLink(project.id)
+                      }}
+                      className="p-2 hover:bg-muted rounded-lg transition-colors"
+                    >
                       <Share2 className="w-4 h-4 text-muted-foreground" />
                     </button>
+                    <Link 
+                      href={`/projects/${project.id}?tab=settings`}
+                      className="p-2 hover:bg-muted rounded-lg transition-colors"
+                    >
+                      <Settings className="w-4 h-4 text-muted-foreground" />
+                    </Link>
                     <button 
                       onClick={() => handleDeleteProject(project.id, project.name)}
                       className="p-2 hover:bg-muted rounded-lg transition-colors"
@@ -174,16 +285,17 @@ export default function ProjectsPage() {
                   </div>
                 </div>
 
-                <h3 className="font-semibold mb-1">{project.name}</h3>
-                {project.description && (
-                  <p className="text-sm text-muted-foreground mb-4 line-clamp-2">
-                    {project.description}
-                  </p>
-                )}
-
-                <div className="flex items-center gap-2 text-sm text-muted-foreground mb-3">
-                  <Image className="w-4 h-4" />
-                  {project.imageCount} images
+                <div className="flex items-center gap-4 text-sm text-muted-foreground mb-3">
+                  <div className="flex items-center gap-1">
+                    <Image className="w-4 h-4" />
+                    {project.imageCount} images
+                  </div>
+                  {project.albumCount !== undefined && (
+                    <div className="flex items-center gap-1">
+                      <FolderOpen className="w-4 h-4" />
+                      {project.albumCount} albums
+                    </div>
+                  )}
                 </div>
 
                 <div className="space-y-1">
@@ -232,6 +344,25 @@ export default function ProjectsPage() {
                     />
                   </div>
                   <div>
+                    <label className="block text-sm font-medium mb-2">Event / Project Name</label>
+                    <input
+                      type="text"
+                      value={newEventName}
+                      onChange={(e) => setNewEventName(e.target.value)}
+                      placeholder="e.g., John & Jane Wedding"
+                      className="w-full px-4 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-2">Start Date</label>
+                    <input
+                      type="date"
+                      value={newStartDate}
+                      onChange={(e) => setNewStartDate(e.target.value)}
+                      className="w-full px-4 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50"
+                    />
+                  </div>
+                  <div>
                     <label className="block text-sm font-medium mb-2">Description (optional)</label>
                     <textarea
                       value={newProjectDesc}
@@ -240,6 +371,18 @@ export default function ProjectsPage() {
                       className="w-full px-4 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50 resize-none"
                       rows={3}
                     />
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="checkbox"
+                      id="branding"
+                      checked={newBranding}
+                      onChange={(e) => setNewBranding(e.target.checked)}
+                      className="w-4 h-4 rounded border-border"
+                    />
+                    <label htmlFor="branding" className="text-sm font-medium">
+                      Enable branding/watermark
+                    </label>
                   </div>
                 </div>
                 <div className="flex gap-3 mt-6">
@@ -260,6 +403,79 @@ export default function ProjectsPage() {
                   </button>
                 </div>
               </form>
+            </div>
+          </div>
+        )}
+
+        {showShareModal && (
+          <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <div className="bg-card border border-border rounded-2xl p-6 w-full max-w-md">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-xl font-bold">Share Project</h2>
+                <button
+                  onClick={() => setShowShareModal(false)}
+                  className="p-2 hover:bg-muted rounded-lg transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              
+              <div className="text-center mb-6">
+                <p className="text-muted-foreground mb-2">
+                  Share your project <strong>{createdProject?.name}</strong>
+                </p>
+              </div>
+
+              <div className="flex justify-center mb-6">
+                <canvas ref={qrCanvasRef} className="rounded-lg" />
+              </div>
+
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium mb-2">Share Link</label>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={qrCodeUrl}
+                      readOnly
+                      className="flex-1 px-4 py-2 bg-background border border-border rounded-lg text-sm"
+                    />
+                    <button
+                      onClick={handleCopyLink}
+                      className="px-4 py-2 border border-border rounded-lg hover:bg-muted transition-colors flex items-center gap-2"
+                    >
+                      {copied ? (
+                        <span className="text-green-500 text-sm">Copied!</span>
+                      ) : (
+                        <Copy className="w-4 h-4" />
+                      )}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="flex gap-3">
+                  <button
+                    onClick={handleDownloadQR}
+                    className="flex-1 px-4 py-2 border border-border rounded-lg hover:bg-muted transition-colors flex items-center justify-center gap-2"
+                  >
+                    <QrCode className="w-4 h-4" />
+                    Download QR
+                  </button>
+                  <a
+                    href={qrCodeUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex-1 px-4 py-2 border border-border rounded-lg hover:bg-muted transition-colors flex items-center justify-center gap-2"
+                  >
+                    <ExternalLink className="w-4 h-4" />
+                    Open Link
+                  </a>
+                </div>
+              </div>
+
+              <p className="text-xs text-muted-foreground text-center mt-4">
+                Share this QR code or link with your clients to let them view the project.
+              </p>
             </div>
           </div>
         )}

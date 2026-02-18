@@ -38,13 +38,26 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
+    const searchParams = request.nextUrl.searchParams
+    const search = searchParams.get('search')
+    const limit = parseInt(searchParams.get('limit') || '20')
+
+    const where = search ? {
+      OR: [
+        { name: { contains: search, mode: 'insensitive' as const } },
+        { email: { contains: search, mode: 'insensitive' as const } }
+      ]
+    } : {}
+
     const users = await prisma.user.findMany({
+      where,
       include: {
         _count: {
           select: { images: true }
         }
       },
-      orderBy: { createdAt: 'desc' }
+      orderBy: { createdAt: 'desc' },
+      take: limit
     })
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any

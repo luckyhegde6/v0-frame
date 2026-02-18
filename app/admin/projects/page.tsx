@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { auth } from '@/lib/auth/auth'
 import { redirect } from 'next/navigation'
-import { FolderOpen, Users, Shield, Clock, Loader2, Search, Edit, Trash2, Eye, EyeOff, Check, X } from 'lucide-react'
+import { FolderOpen, Users, Shield, Clock, Loader2, Search, Edit, Trash2, Eye, EyeOff, Check, X, ExternalLink, Link as LinkIcon } from 'lucide-react'
 import Link from 'next/link'
 import { handleApiError, showSuccess } from '@/lib/error-handler'
 
@@ -193,7 +193,9 @@ export default function AdminProjectsPage() {
                   <tr key={project.id} className="border-b border-border last:border-0">
                     <td className="px-4 py-3">
                       <div>
-                        <p className="font-medium">{project.name}</p>
+                        <Link href={`/projects/${project.id}`} className="font-medium hover:text-primary hover:underline">
+                          {project.name}
+                        </Link>
                         {project.description && (
                           <p className="text-sm text-muted-foreground truncate max-w-xs">{project.description}</p>
                         )}
@@ -284,13 +286,22 @@ export default function AdminProjectsPage() {
                       {formatDate(project.updatedAt)}
                     </td>
                     <td className="px-4 py-3 text-right">
-                      <button
-                        onClick={() => setEditingProject(project.id)}
-                        className="p-2 hover:bg-muted rounded-lg transition-colors"
-                        title="Manage access"
-                      >
-                        <Shield className="w-4 h-4 text-muted-foreground" />
-                      </button>
+                      <div className="flex items-center justify-end gap-1">
+                        <Link
+                          href={`/projects/${project.id}`}
+                          className="p-2 hover:bg-muted rounded-lg transition-colors"
+                          title="View Project"
+                        >
+                          <Eye className="w-4 h-4 text-muted-foreground" />
+                        </Link>
+                        <button
+                          onClick={() => setEditingProject(project.id)}
+                          className="p-2 hover:bg-muted rounded-lg transition-colors"
+                          title="Manage access"
+                        >
+                          <Shield className="w-4 h-4 text-muted-foreground" />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
