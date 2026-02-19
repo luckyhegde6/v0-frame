@@ -10,11 +10,22 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
+    const user = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+        image: true
+      }
+    })
+
     const profile = await prisma.proProfile.findUnique({
       where: { userId: session.user.id }
     })
 
-    return NextResponse.json({ profile })
+    return NextResponse.json({ user, profile })
   } catch (error) {
     console.error('[ProfileAPI] Failed to fetch profile:', error)
     return NextResponse.json(

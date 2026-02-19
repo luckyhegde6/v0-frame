@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { FolderOpen, Image, Loader2, Search, Eye, Trash2, Settings, Users } from 'lucide-react'
+import { FolderOpen, Image, Loader2, Search, Eye, Trash2, Settings, Users, Layers } from 'lucide-react'
 import { handleApiError, showSuccess } from '@/lib/error-handler'
 
 interface Album {
@@ -194,6 +194,13 @@ export default function AdminAlbumsPage() {
                     </td>
                     <td className="px-4 py-3 text-right">
                       <div className="flex items-center justify-end gap-1">
+                        <Link
+                          href={`/admin/albums/${album.id}`}
+                          className="p-2 hover:bg-muted rounded-lg transition-colors"
+                          title="Manage Album Images"
+                        >
+                          <Layers className="w-4 h-4 text-muted-foreground" />
+                        </Link>
                         {album.projectId && (
                           <Link
                             href={`/projects/${album.projectId}/albums/${album.id}`}

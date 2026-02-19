@@ -10,10 +10,13 @@ export async function GET(request: NextRequest) {
     const userRole = session?.user?.role
     const isAdmin = userRole === 'ADMIN' || userRole === 'SUPERADMIN'
     
-    // Phase 2: Include all image statuses, not just INGESTED
+    // Gallery API only returns GALLERY type images (personal gallery)
+    // ALBUM type images are accessed via /api/albums/{id}/images
     const [images, collections, jobsByImageId] = await Promise.all([
       prisma.image.findMany({
-        where: isAdmin ? {} : { userId: session?.user?.id },
+        where: isAdmin 
+          ? { storageType: 'GALLERY' } 
+          : { userId: session?.user?.id, storageType: 'GALLERY' },
         orderBy: {
           createdAt: 'desc',
         },

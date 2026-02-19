@@ -193,6 +193,70 @@ export default function AdminGalleryPage() {
     }
   }
 
+  const handleDelete = async () => {
+    if (!selectedImages.length) return
+
+    if (!confirm(`Are you sure you want to delete ${selectedImages.length} image(s)? This action cannot be undone.`)) {
+      return
+    }
+
+    setOperating(true)
+    setResult(null)
+
+    try {
+      const response = await fetch('/api/admin/gallery/manage', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'delete',
+          imageIds: selectedImages
+        })
+      })
+
+      const data = await response.json()
+      setResult(data)
+
+      if (data.success > 0) {
+        setSelectedImages([])
+        fetchData()
+      }
+    } catch (error) {
+      handleApiError(error, 'DeleteImages')
+    } finally {
+      setOperating(false)
+    }
+  }
+
+  const handleDeleteSingle = async (imageId: string) => {
+    if (!confirm('Are you sure you want to delete this image? This action cannot be undone.')) {
+      return
+    }
+
+    setOperating(true)
+
+    try {
+      const response = await fetch('/api/admin/gallery/manage', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'delete',
+          imageIds: [imageId]
+        })
+      })
+
+      const data = await response.json()
+      setResult(data)
+
+      if (data.success > 0) {
+        fetchData()
+      }
+    } catch (error) {
+      handleApiError(error, 'DeleteImage')
+    } finally {
+      setOperating(false)
+    }
+  }
+
   const formatBytes = (bytes: number) => {
     if (bytes === 0) return '0 B'
     const k = 1024
@@ -308,6 +372,18 @@ export default function AdminGalleryPage() {
                   Clone
                 </button>
                 <button
+                  onClick={handleDelete}
+                  disabled={operating}
+                  className="flex items-center gap-2 px-3 py-1.5 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm disabled:opacity-50"
+                >
+                  {operating ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Trash2 className="w-4 h-4" />
+                  )}
+                  Delete
+                </button>
+                <button
                   onClick={() => setSelectedImages([])}
                   className="px-3 py-1.5 text-muted-foreground hover:text-foreground transition-colors text-sm"
                 >
@@ -344,6 +420,7 @@ export default function AdminGalleryPage() {
                   <th className="px-6 py-3 text-left text-sm font-medium text-muted-foreground">Size</th>
                   <th className="px-6 py-3 text-left text-sm font-medium text-muted-foreground">Status</th>
                   <th className="px-6 py-3 text-left text-sm font-medium text-muted-foreground">Date</th>
+                  <th className="px-6 py-3 text-left text-sm font-medium text-muted-foreground">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
@@ -383,6 +460,16 @@ export default function AdminGalleryPage() {
                     </td>
                     <td className="px-6 py-4 text-sm text-muted-foreground">
                       {new Date(image.createdAt).toLocaleDateString()}
+                    </td>
+                    <td className="px-6 py-4">
+                      <button
+                        onClick={() => handleDeleteSingle(image.id)}
+                        disabled={operating}
+                        className="p-2 text-red-500 hover:bg-red-500/10 rounded-lg transition-colors disabled:opacity-50"
+                        title="Delete"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
                     </td>
                   </tr>
                 ))}

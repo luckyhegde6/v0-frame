@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth/auth'
 import prisma from '@/lib/prisma'
+import { isAdmin, checkProjectAccess } from '@/lib/auth/access'
 
 export async function GET(
   request: NextRequest,
@@ -15,16 +16,9 @@ export async function GET(
     }
 
     const userRole = session.user.role
-    const isAdmin = userRole === 'ADMIN' || userRole === 'SUPERADMIN'
 
-    const project = await prisma.project.findFirst({
-      where: { 
-        id,
-        ...(isAdmin ? {} : { ownerId: session.user.id })
-      }
-    })
-
-    if (!project) {
+    const access = await checkProjectAccess(id, session.user.id, userRole)
+    if (!access.hasAccess) {
       return NextResponse.json({ error: 'Project not found' }, { status: 404 })
     }
 
@@ -32,7 +26,7 @@ export async function GET(
       where: { projectId: id },
       include: {
         _count: {
-          select: { images: true }
+          select: { images: true, albumImages: true }
         }
       },
       orderBy: { updatedAt: 'desc' }
@@ -43,7 +37,7 @@ export async function GET(
       name: album.name,
       description: album.description,
       category: album.category,
-      imageCount: album._count.images,
+      imageCount: album._count.images + album._count.albumImages,
       coverImage: album.coverImage,
       createdAt: album.createdAt.toISOString(),
       updatedAt: album.updatedAt.toISOString()

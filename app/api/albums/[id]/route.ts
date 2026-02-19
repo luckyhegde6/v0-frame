@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth/auth'
 import prisma from '@/lib/prisma'
 import { logAlbumDeleted } from '@/lib/audit'
+import { isAdmin, checkAlbumAccess } from '@/lib/auth/access'
 
 export async function GET(
   request: NextRequest,
@@ -16,13 +17,14 @@ export async function GET(
     }
 
     const userRole = session.user.role
-    const isAdmin = userRole === 'ADMIN' || userRole === 'SUPERADMIN'
 
-    // ADMIN/SUPERADMIN can view any album
+    const access = await checkAlbumAccess(albumId, session.user.id, userRole)
+    if (!access.hasAccess) {
+      return NextResponse.json({ error: 'Album not found' }, { status: 404 })
+    }
+
     const album = await prisma.album.findFirst({
-      where: isAdmin 
-        ? { id: albumId }
-        : { id: albumId, ownerId: session.user.id },
+      where: { id: albumId },
       include: {
         owner: {
           select: { id: true, name: true, email: true }
@@ -98,13 +100,75 @@ export async function DELETE(
       where: { id: albumId }
     })
 
-    await logAlbumDeleted(albumId, album.projectId || '', session.user.id, { name: album.name })
+    await logAlbumDeleted(albumId, session.user.id, { name: album.name, projectId: album.projectId })
 
     return NextResponse.json({ success: true })
   } catch (error) {
     console.error('[AlbumAPI] Failed to delete album:', error)
     return NextResponse.json(
       { error: 'Failed to delete album' },
+      { status: 500 }
+    )
+  }
+}
+
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const session = await auth()
+    const { id: albumId } = await params
+    
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const userRole = session.user.role
+    const isAdmin = userRole === 'ADMIN' || userRole === 'SUPERADMIN'
+
+    // Only ADMIN/SUPERADMIN can update album details including owner
+    if (!isAdmin) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
+
+    const body = await request.json()
+    const { ownerId, name, description, category } = body
+
+    const album = await prisma.album.findFirst({
+      where: { id: albumId }
+    })
+
+    if (!album) {
+      return NextResponse.json({ error: 'Album not found' }, { status: 404 })
+    }
+
+    const updateData: any = {}
+    if (ownerId !== undefined) updateData.ownerId = ownerId
+    if (name !== undefined) updateData.name = name
+    if (description !== undefined) updateData.description = description
+    if (category !== undefined) updateData.category = category
+
+    const updatedAlbum = await prisma.album.update({
+      where: { id: albumId },
+      data: updateData
+    })
+
+    return NextResponse.json({
+      album: {
+        id: updatedAlbum.id,
+        name: updatedAlbum.name,
+        description: updatedAlbum.description,
+        category: updatedAlbum.category,
+        ownerId: updatedAlbum.ownerId,
+        projectId: updatedAlbum.projectId,
+        updatedAt: updatedAlbum.updatedAt.toISOString()
+      }
+    })
+  } catch (error) {
+    console.error('[AlbumAPI] Failed to update album:', error)
+    return NextResponse.json(
+      { error: 'Failed to update album' },
       { status: 500 }
     )
   }

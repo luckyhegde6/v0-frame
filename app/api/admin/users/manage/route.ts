@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth/auth'
 import prisma from '@/lib/prisma'
 import bcrypt from 'bcryptjs'
+import { logUserCreated, logUserUpdated, logUserDeleted, logUserRoleChanged } from '@/lib/audit'
 
 export async function POST(request: NextRequest) {
   try {
@@ -44,6 +45,8 @@ export async function POST(request: NextRequest) {
       }
     })
 
+    await logUserCreated(user.id, session.user.id, { email: user.email, role: user.role })
+
     return NextResponse.json({
       user: {
         id: user.id,
@@ -80,10 +83,23 @@ export async function PATCH(request: NextRequest) {
       )
     }
 
+    const existingUser = await prisma.user.findUnique({
+      where: { id: userId }
+    })
+
+    if (!existingUser) {
+      return NextResponse.json(
+        { error: 'User not found' },
+        { status: 404 }
+      )
+    }
+
     const updateData: Record<string, unknown> = {}
     if (name) updateData.name = name
     if (email) updateData.email = email
-    if (role) updateData.role = role
+    if (role) {
+      updateData.role = role
+    }
     if (password) {
       updateData.password = await bcrypt.hash(password, 10)
     }
@@ -92,6 +108,17 @@ export async function PATCH(request: NextRequest) {
       where: { id: userId },
       data: updateData
     })
+
+    if (role && role !== existingUser.role) {
+      await logUserRoleChanged(user.id, session.user.id, existingUser.role, role)
+    } else {
+      await logUserUpdated(
+        user.id,
+        session.user.id,
+        { name: existingUser.name, email: existingUser.email },
+        { name: user.name, email: user.email }
+      )
+    }
 
     return NextResponse.json({
       user: {
@@ -129,6 +156,17 @@ export async function DELETE(request: NextRequest) {
       )
     }
 
+    const existingUser = await prisma.user.findUnique({
+      where: { id: userId }
+    })
+
+    if (!existingUser) {
+      return NextResponse.json(
+        { error: 'User not found' },
+        { status: 404 }
+      )
+    }
+
     if (userId === session.user.id) {
       return NextResponse.json(
         { error: 'Cannot delete your own account' },
@@ -139,6 +177,8 @@ export async function DELETE(request: NextRequest) {
     await prisma.user.delete({
       where: { id: userId }
     })
+
+    await logUserDeleted(userId, session.user.id, { email: existingUser.email, name: existingUser.name })
 
     return NextResponse.json({ success: true })
   } catch (error) {

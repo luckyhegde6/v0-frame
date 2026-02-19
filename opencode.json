@@ -126,5 +126,5 @@
       }
     }
   },
-    "plugin": ["opencode-helicone-session", "opencode-wakatime"]
+  "plugin": ["opencode-helicone-session", "opencode-wakatime"]
 }

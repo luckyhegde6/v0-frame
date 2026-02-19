@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth/auth'
 import prisma from '@/lib/prisma'
+import { logProjectUpdated, logProjectDeleted } from '@/lib/audit'
+import { isAdmin, checkProjectAccess } from '@/lib/auth/access'
 
 export async function GET(
   request: NextRequest,
@@ -15,14 +17,22 @@ export async function GET(
     }
 
     const userRole = session.user.role
-    const isAdmin = userRole === 'ADMIN' || userRole === 'SUPERADMIN'
+
+    const access = await checkProjectAccess(id, session.user.id, userRole)
+    if (!access.hasAccess) {
+      return NextResponse.json({ error: 'Project not found' }, { status: 404 })
+    }
 
     const project = await prisma.project.findFirst({
-      where: { 
-        id,
-        ...(isAdmin ? {} : { ownerId: session.user.id })
-      },
+      where: { id },
       include: {
+        albums: {
+          include: {
+            _count: {
+              select: { images: true }
+            }
+          }
+        },
         _count: {
           select: { images: true }
         }
@@ -33,15 +43,32 @@ export async function GET(
       return NextResponse.json({ error: 'Project not found' }, { status: 404 })
     }
 
-    const images = await prisma.projectImage.findMany({
+    // Count all images: direct project images + album images
+    const directImageCount = project._count.images
+    const albumImageCount = project.albums.reduce((acc, album) => acc + album._count.images, 0)
+    const totalImageCount = directImageCount + albumImageCount
+
+    // Get total size from direct project images
+    const directImages = await prisma.projectImage.findMany({
       where: { projectId: id },
       include: {
         image: true
       }
     })
 
+    // Get total size from album images
+    const albumIds = project.albums.map(a => a.id)
+    const albumImages = albumIds.length > 0 ? await prisma.image.findMany({
+      where: {
+        albumId: { in: albumIds },
+        storageType: 'ALBUM'
+      }
+    }) : []
+
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const totalSize = images.reduce((acc: number, pi: any) => acc + (pi.image?.sizeBytes || 0), 0)
+    const directSize = directImages.reduce((acc: number, pi: any) => acc + (pi.image?.sizeBytes || 0), 0)
+    const albumSize = albumImages.reduce((acc, img) => acc + (img.sizeBytes || 0), 0)
+    const totalSize = directSize + albumSize
 
     return NextResponse.json({
       project: {
@@ -53,7 +80,7 @@ export async function GET(
         branding: project.branding,
         watermarkImage: project.watermarkImage,
         coverImage: project.coverImage,
-        imageCount: project._count.images,
+        imageCount: totalImageCount,
         storageQuota: project.quotaBytes.toString(),
         storageUsed: totalSize,
         createdAt: project.createdAt,
@@ -84,11 +111,14 @@ export async function PATCH(
     const body = await request.json()
     const { name, description, quotaBytes } = body
 
+    const access = await checkProjectAccess(id, session.user.id, session.user.role)
+    
+    if (!access.hasAccess || (access.accessLevel !== 'FULL' && !isAdmin(session.user.role))) {
+      return NextResponse.json({ error: 'Project not found or access denied' }, { status: 404 })
+    }
+
     const existingProject = await prisma.project.findFirst({
-      where: { 
-        id,
-        ownerId: session.user.id 
-      }
+      where: { id }
     })
 
     if (!existingProject) {
@@ -121,6 +151,13 @@ export async function PATCH(
       }
     })
 
+    await logProjectUpdated(
+      id,
+      session.user.id,
+      { name: existingProject.name, description: existingProject.description },
+      { name: project.name, description: project.description }
+    )
+
     return NextResponse.json({
       project: {
         id: project.id,
@@ -151,11 +188,14 @@ export async function DELETE(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
+    const access = await checkProjectAccess(id, session.user.id, session.user.role)
+    
+    if (!access.hasAccess || (access.accessLevel !== 'FULL' && !isAdmin(session.user.role))) {
+      return NextResponse.json({ error: 'Project not found or access denied' }, { status: 404 })
+    }
+
     const existingProject = await prisma.project.findFirst({
-      where: { 
-        id,
-        ownerId: session.user.id 
-      }
+      where: { id }
     })
 
     if (!existingProject) {
@@ -165,6 +205,8 @@ export async function DELETE(
     await prisma.project.delete({
       where: { id }
     })
+
+    await logProjectDeleted(id, session.user.id, { name: existingProject.name })
 
     return NextResponse.json({ success: true })
   } catch (error) {

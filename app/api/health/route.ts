@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/prisma'
+import { getStorageInfo, storagePaths, storageStructure } from '@/lib/storage'
 
 /**
  * @swagger
@@ -46,7 +47,7 @@ import prisma from '@/lib/prisma'
  */
 export async function GET(request: NextRequest) {
   const startTime = Date.now()
-  const services: Record<string, { status: string; responseTime?: number; details?: string }> = {}
+  const services: Record<string, { status: string; responseTime?: number; details?: string | object }> = {}
   let overallStatus = 'healthy'
 
   // Check database connection
@@ -65,15 +66,39 @@ export async function GET(request: NextRequest) {
     overallStatus = 'degraded'
   }
 
-  // Check storage (temp directory)
+  // Check storage
   try {
-    const { existsSync } = await import('fs')
-    const { tempDir } = await import('@/lib/storage/temp')
-    const storagePath = tempDir
-    if (existsSync(storagePath)) {
-      services.storage = { status: 'healthy' }
-    } else {
-      services.storage = { status: 'unhealthy', details: 'Storage directory not accessible' }
+    const fsPromises = await import('fs/promises')
+    const storageInfo = getStorageInfo()
+    const rootPath = storageInfo.baseDir
+
+    const pathStatus: Record<string, { exists: boolean; writable?: boolean }> = {}
+    let allPathsAccessible = true
+
+    for (const struct of storageStructure) {
+      const fullPath = rootPath + (struct.path.includes('{') ? '' : '/' + struct.path.split('/').slice(0, 2).join('/'))
+      try {
+        await fsPromises.access(fullPath)
+        pathStatus[struct.path] = { exists: true, writable: true }
+      } catch {
+        pathStatus[struct.path] = { exists: false }
+        allPathsAccessible = false
+      }
+    }
+
+    services.storage = {
+      status: allPathsAccessible ? 'healthy' : 'degraded',
+      details: {
+        backend: storageInfo.backend,
+        baseDir: storageInfo.baseDir,
+        platform: storageInfo.platform,
+        isVercel: storageInfo.isVercel,
+        structure: storageInfo.structure,
+        pathStatus
+      }
+    }
+
+    if (!allPathsAccessible) {
       overallStatus = 'degraded'
     }
   } catch (error) {

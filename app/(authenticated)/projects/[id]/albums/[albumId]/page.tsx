@@ -6,7 +6,8 @@ import Link from 'next/link'
 import { 
   ArrowLeft, Loader2, Settings, Upload, Image, 
   Film, Video, Play, FileImage, Palette, Eye, 
-  Download, Trash2, Save, User, Check
+  Download, Trash2, Save, User, Check, Scissors, 
+  Copy, GitBranch, X, Plus
 } from 'lucide-react'
 import { handleApiError, showSuccess } from '@/lib/error-handler'
 
@@ -93,6 +94,22 @@ export default function AlbumDetailPage() {
     downloadEnabled: true,
     bulkDownloadEnabled: true
   })
+
+  // Image management state
+  const [selectedImages, setSelectedImages] = useState<string[]>([])
+  const [projectAlbums, setProjectAlbums] = useState<{ id: string; name: string; category: string }[]>([])
+  const [operating, setOperating] = useState(false)
+  const [result, setResult] = useState<{ success: number; failed: number } | null>(null)
+  
+  // Modal states
+  const [showMoveModal, setShowMoveModal] = useState(false)
+  const [showCopyModal, setShowCopyModal] = useState(false)
+  const [albumSelectionMode, setAlbumSelectionMode] = useState<'existing' | 'new'>('existing')
+  const [targetAlbumId, setTargetAlbumId] = useState('')
+  const [newAlbumName, setNewAlbumName] = useState('')
+  const [newAlbumCategory, setNewAlbumCategory] = useState('PHOTO_ALBUM')
+  const [newAlbumDescription, setNewAlbumDescription] = useState('')
+  const [creatingAlbum, setCreatingAlbum] = useState(false)
 
   useEffect(() => {
     if (albumId) {
@@ -194,6 +211,256 @@ export default function AlbumDetailPage() {
     } catch (error) {
       handleApiError(error, 'FaceRecognition')
     }
+  }
+
+  // Image management functions
+  const fetchProjectAlbums = async () => {
+    try {
+      const response = await fetch(`/api/projects/${projectId}/albums`)
+      if (response.ok) {
+        const data = await response.json()
+        setProjectAlbums((data.albums || []).filter((a: any) => a.id !== albumId))
+      }
+    } catch (error) {
+      console.error('Failed to fetch project albums:', error)
+    }
+  }
+
+  const toggleImageSelection = (imageId: string) => {
+    setSelectedImages(prev =>
+      prev.includes(imageId)
+        ? prev.filter(id => id !== imageId)
+        : [...prev, imageId]
+    )
+  }
+
+  const selectAllImages = () => {
+    if (selectedImages.length === albumImages.length) {
+      setSelectedImages([])
+    } else {
+      setSelectedImages(albumImages.map(img => img.id))
+    }
+  }
+
+  const handleRemoveFromAlbum = async () => {
+    if (selectedImages.length === 0) return
+    if (!confirm(`Remove ${selectedImages.length} image(s) from this album?`)) return
+
+    try {
+      const response = await fetch(`/api/albums/${albumId}/images`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ imageIds: selectedImages })
+      })
+
+      if (response.ok) {
+        showSuccess(`${selectedImages.length} image(s) removed from album`)
+        setSelectedImages([])
+        fetchImages()
+      }
+    } catch (error) {
+      handleApiError(error, 'RemoveFromAlbum')
+    }
+  }
+
+  const handleMove = async () => {
+    setOperating(true)
+    setResult(null)
+
+    try {
+      let finalTargetAlbumId = targetAlbumId
+
+      if (albumSelectionMode === 'new') {
+        if (!newAlbumName.trim()) {
+          alert('Please enter an album name')
+          setOperating(false)
+          return
+        }
+
+        setCreatingAlbum(true)
+        const createResponse = await fetch('/api/albums', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: newAlbumName.trim(),
+            category: newAlbumCategory,
+            description: newAlbumDescription.trim() || undefined,
+            projectId
+          })
+        })
+
+        if (!createResponse.ok) {
+          const errorData = await createResponse.json()
+          alert(errorData.error || 'Failed to create album')
+          setOperating(false)
+          setCreatingAlbum(false)
+          return
+        }
+
+        const newAlbum = await createResponse.json()
+        finalTargetAlbumId = newAlbum.album.id
+        setCreatingAlbum(false)
+      }
+
+      if (!finalTargetAlbumId) {
+        alert('Please select or create a target album')
+        setOperating(false)
+        return
+      }
+
+      const response = await fetch(`/api/albums/${albumId}/images`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'move',
+          imageIds: selectedImages,
+          targetAlbumId: finalTargetAlbumId
+        })
+      })
+
+      const data = await response.json()
+      setResult(data)
+
+      if (data.success > 0) {
+        showSuccess(`${data.success} image(s) moved successfully`)
+        setSelectedImages([])
+        setShowMoveModal(false)
+        setTargetAlbumId('')
+        setNewAlbumName('')
+        setNewAlbumDescription('')
+        setAlbumSelectionMode('existing')
+        fetchImages()
+      }
+    } catch (error) {
+      handleApiError(error, 'MoveImages')
+    } finally {
+      setOperating(false)
+    }
+  }
+
+  const handleCopy = async () => {
+    setOperating(true)
+    setResult(null)
+
+    try {
+      let finalTargetAlbumId = targetAlbumId
+
+      if (albumSelectionMode === 'new') {
+        if (!newAlbumName.trim()) {
+          alert('Please enter an album name')
+          setOperating(false)
+          return
+        }
+
+        setCreatingAlbum(true)
+        const createResponse = await fetch('/api/albums', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: newAlbumName.trim(),
+            category: newAlbumCategory,
+            description: newAlbumDescription.trim() || undefined,
+            projectId
+          })
+        })
+
+        if (!createResponse.ok) {
+          const errorData = await createResponse.json()
+          alert(errorData.error || 'Failed to create album')
+          setOperating(false)
+          setCreatingAlbum(false)
+          return
+        }
+
+        const newAlbum = await createResponse.json()
+        finalTargetAlbumId = newAlbum.album.id
+        setCreatingAlbum(false)
+      }
+
+      if (!finalTargetAlbumId) {
+        alert('Please select or create a target album')
+        setOperating(false)
+        return
+      }
+
+      const response = await fetch(`/api/albums/${albumId}/images`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'copy',
+          imageIds: selectedImages,
+          targetAlbumId: finalTargetAlbumId
+        })
+      })
+
+      const data = await response.json()
+      setResult(data)
+
+      if (data.success > 0) {
+        showSuccess(`${data.success} image(s) copied successfully`)
+        setSelectedImages([])
+        setShowCopyModal(false)
+        setTargetAlbumId('')
+        setNewAlbumName('')
+        setNewAlbumDescription('')
+        setAlbumSelectionMode('existing')
+        fetchImages()
+      }
+    } catch (error) {
+      handleApiError(error, 'CopyImages')
+    } finally {
+      setOperating(false)
+    }
+  }
+
+  const handleClone = async () => {
+    setOperating(true)
+    setResult(null)
+
+    try {
+      const response = await fetch(`/api/albums/${albumId}/images`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'clone',
+          imageIds: selectedImages
+        })
+      })
+
+      const data = await response.json()
+      setResult(data)
+
+      if (data.success > 0) {
+        showSuccess(`${data.success} image(s) cloned successfully`)
+        setSelectedImages([])
+        fetchImages()
+      }
+    } catch (error) {
+      handleApiError(error, 'CloneImages')
+    } finally {
+      setOperating(false)
+    }
+  }
+
+  const openMoveModal = () => {
+    fetchProjectAlbums()
+    setShowMoveModal(true)
+  }
+
+  const openCopyModal = () => {
+    fetchProjectAlbums()
+    setShowCopyModal(true)
+  }
+
+  const closeModals = () => {
+    setShowMoveModal(false)
+    setShowCopyModal(false)
+    setTargetAlbumId('')
+    setResult(null)
+    setAlbumSelectionMode('existing')
+    setNewAlbumName('')
+    setNewAlbumDescription('')
+    setNewAlbumCategory('PHOTO_ALBUM')
   }
 
   const getCategoryIcon = (category: string) => {
@@ -497,6 +764,62 @@ export default function AlbumDetailPage() {
 
         {activeTab === 'content' && (
           <div>
+            {/* Image Management Toolbar */}
+            {albumImages.length > 0 && (
+              <div className="mb-6 space-y-4">
+                {/* Selection Bar */}
+                <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="checkbox"
+                      checked={selectedImages.length === albumImages.length && albumImages.length > 0}
+                      onChange={selectAllImages}
+                      className="w-4 h-4 rounded border-border"
+                    />
+                    <span className="text-sm font-medium">
+                      {selectedImages.length > 0 
+                        ? `${selectedImages.length} selected` 
+                        : 'Select all'}
+                    </span>
+                  </div>
+                  
+                  {selectedImages.length > 0 && (
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={openMoveModal}
+                        className="flex items-center gap-1.5 px-3 py-1.5 bg-primary text-white rounded-lg hover:bg-primary/90 text-sm"
+                      >
+                        <Scissors className="w-4 h-4" />
+                        Move
+                      </button>
+                      <button
+                        onClick={openCopyModal}
+                        className="flex items-center gap-1.5 px-3 py-1.5 bg-secondary text-secondary-foreground rounded-lg hover:bg-secondary/80 text-sm"
+                      >
+                        <Copy className="w-4 h-4" />
+                        Copy
+                      </button>
+                      <button
+                        onClick={handleClone}
+                        disabled={operating}
+                        className="flex items-center gap-1.5 px-3 py-1.5 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm disabled:opacity-50"
+                      >
+                        {operating ? <Loader2 className="w-4 h-4 animate-spin" /> : <GitBranch className="w-4 h-4" />}
+                        Clone
+                      </button>
+                      <button
+                        onClick={handleRemoveFromAlbum}
+                        className="flex items-center gap-1.5 px-3 py-1.5 bg-orange-600 text-white rounded-lg hover:bg-orange-700 text-sm"
+                      >
+                        <X className="w-4 h-4" />
+                        Remove
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
             {loadingImages ? (
               <div className="flex items-center justify-center py-12">
                 <Loader2 className="w-8 h-8 animate-spin text-primary" />
@@ -506,8 +829,22 @@ export default function AlbumDetailPage() {
                 {albumImages.map((image) => (
                   <div
                     key={image.id}
-                    className="aspect-square bg-muted rounded-lg overflow-hidden cursor-pointer hover:opacity-90 transition-opacity"
+                    className={`relative aspect-square bg-muted rounded-lg overflow-hidden cursor-pointer hover:opacity-90 transition-all ${
+                      selectedImages.includes(image.id) ? 'ring-2 ring-primary' : ''
+                    }`}
+                    onClick={() => toggleImageSelection(image.id)}
                   >
+                    {/* Selection Checkbox */}
+                    <div className="absolute top-2 left-2 z-10">
+                      <input
+                        type="checkbox"
+                        checked={selectedImages.includes(image.id)}
+                        onChange={() => toggleImageSelection(image.id)}
+                        className="w-4 h-4 rounded border-border"
+                        onClick={(e) => e.stopPropagation()}
+                      />
+                    </div>
+                    
                     {image.thumbnailPath || image.previewPath ? (
                       <img
                         src={image.previewPath || image.thumbnailPath || ''}
@@ -519,6 +856,11 @@ export default function AlbumDetailPage() {
                         <Image className="w-8 h-8 text-muted-foreground" />
                       </div>
                     )}
+                    
+                    {/* Title Overlay */}
+                    <div className="absolute bottom-0 left-0 right-0 p-2 bg-gradient-to-t from-black/60 to-transparent">
+                      <p className="text-xs text-white truncate">{image.title || 'Untitled'}</p>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -534,6 +876,246 @@ export default function AlbumDetailPage() {
                 </Link>
               </div>
             )}
+          </div>
+        )}
+
+        {/* Move Modal */}
+        {showMoveModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center">
+            <div className="absolute inset-0 bg-black/50" onClick={closeModals} />
+            <div className="relative bg-card border border-border rounded-lg w-full max-w-lg p-6 shadow-xl max-h-[90vh] overflow-y-auto">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-xl font-semibold flex items-center gap-2">
+                  <Scissors className="w-5 h-5" />
+                  Move Images
+                </h2>
+                <button onClick={closeModals} className="p-2 hover:bg-muted rounded-lg">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                <p className="text-sm text-muted-foreground">
+                  Move {selectedImages.length} image(s) to another album in this project.
+                </p>
+
+                <div className="flex gap-4 p-3 bg-muted/50 rounded-lg">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      value="existing"
+                      checked={albumSelectionMode === 'existing'}
+                      onChange={(e) => setAlbumSelectionMode(e.target.value as 'existing' | 'new')}
+                      className="w-4 h-4"
+                    />
+                    <span className="text-sm">Existing Album</span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      value="new"
+                      checked={albumSelectionMode === 'new'}
+                      onChange={(e) => setAlbumSelectionMode(e.target.value as 'existing' | 'new')}
+                      className="w-4 h-4"
+                    />
+                    <span className="text-sm">Create New Album</span>
+                  </label>
+                </div>
+
+                {albumSelectionMode === 'existing' ? (
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Target Album</label>
+                    <select
+                      value={targetAlbumId}
+                      onChange={(e) => setTargetAlbumId(e.target.value)}
+                      className="w-full px-3 py-2 bg-background border border-border rounded-lg"
+                    >
+                      <option value="">Select album...</option>
+                      {projectAlbums.map(album => (
+                        <option key={album.id} value={album.id}>
+                          {album.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                ) : (
+                  <div className="space-y-3 p-4 bg-muted/30 rounded-lg">
+                    <h3 className="text-sm font-medium">New Album Details</h3>
+                    <div>
+                      <label className="block text-xs text-muted-foreground mb-1">Album Name *</label>
+                      <input
+                        type="text"
+                        value={newAlbumName}
+                        onChange={(e) => setNewAlbumName(e.target.value)}
+                        placeholder="Enter album name..."
+                        className="w-full px-3 py-2 bg-background border border-border rounded-lg"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-muted-foreground mb-1">Category</label>
+                      <select
+                        value={newAlbumCategory}
+                        onChange={(e) => setNewAlbumCategory(e.target.value)}
+                        className="w-full px-3 py-2 bg-background border border-border rounded-lg"
+                      >
+                        <option value="PHOTO_ALBUM">Photo Album</option>
+                        <option value="COVER_PAGE">Cover Page</option>
+                        <option value="SHORT_VIDEOS">Short Videos</option>
+                        <option value="REELS">Reels</option>
+                        <option value="SHORTS">Shorts</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-xs text-muted-foreground mb-1">Description</label>
+                      <textarea
+                        value={newAlbumDescription}
+                        onChange={(e) => setNewAlbumDescription(e.target.value)}
+                        placeholder="Enter description..."
+                        rows={2}
+                        className="w-full px-3 py-2 bg-background border border-border rounded-lg text-sm"
+                      />
+                    </div>
+                  </div>
+                )}
+
+                <div className="flex justify-end gap-2 pt-4">
+                  <button
+                    onClick={closeModals}
+                    className="px-4 py-2 border border-border rounded-lg hover:bg-muted"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleMove}
+                    disabled={operating || creatingAlbum || (albumSelectionMode === 'existing' ? !targetAlbumId : !newAlbumName.trim())}
+                    className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg disabled:opacity-50"
+                  >
+                    {operating || creatingAlbum ? <Loader2 className="w-4 h-4 animate-spin" /> : <Scissors className="w-4 h-4" />}
+                    {creatingAlbum ? 'Creating...' : 'Move'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Copy Modal */}
+        {showCopyModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center">
+            <div className="absolute inset-0 bg-black/50" onClick={closeModals} />
+            <div className="relative bg-card border border-border rounded-lg w-full max-w-lg p-6 shadow-xl max-h-[90vh] overflow-y-auto">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-xl font-semibold flex items-center gap-2">
+                  <Copy className="w-5 h-5" />
+                  Copy Images
+                </h2>
+                <button onClick={closeModals} className="p-2 hover:bg-muted rounded-lg">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                <p className="text-sm text-muted-foreground">
+                  Copy {selectedImages.length} image(s) to another album. Images will exist in both albums.
+                </p>
+
+                <div className="flex gap-4 p-3 bg-muted/50 rounded-lg">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      value="existing"
+                      checked={albumSelectionMode === 'existing'}
+                      onChange={(e) => setAlbumSelectionMode(e.target.value as 'existing' | 'new')}
+                      className="w-4 h-4"
+                    />
+                    <span className="text-sm">Existing Album</span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      value="new"
+                      checked={albumSelectionMode === 'new'}
+                      onChange={(e) => setAlbumSelectionMode(e.target.value as 'existing' | 'new')}
+                      className="w-4 h-4"
+                    />
+                    <span className="text-sm">Create New Album</span>
+                  </label>
+                </div>
+
+                {albumSelectionMode === 'existing' ? (
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Target Album</label>
+                    <select
+                      value={targetAlbumId}
+                      onChange={(e) => setTargetAlbumId(e.target.value)}
+                      className="w-full px-3 py-2 bg-background border border-border rounded-lg"
+                    >
+                      <option value="">Select album...</option>
+                      {projectAlbums.map(album => (
+                        <option key={album.id} value={album.id}>
+                          {album.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                ) : (
+                  <div className="space-y-3 p-4 bg-muted/30 rounded-lg">
+                    <h3 className="text-sm font-medium">New Album Details</h3>
+                    <div>
+                      <label className="block text-xs text-muted-foreground mb-1">Album Name *</label>
+                      <input
+                        type="text"
+                        value={newAlbumName}
+                        onChange={(e) => setNewAlbumName(e.target.value)}
+                        placeholder="Enter album name..."
+                        className="w-full px-3 py-2 bg-background border border-border rounded-lg"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-muted-foreground mb-1">Category</label>
+                      <select
+                        value={newAlbumCategory}
+                        onChange={(e) => setNewAlbumCategory(e.target.value)}
+                        className="w-full px-3 py-2 bg-background border border-border rounded-lg"
+                      >
+                        <option value="PHOTO_ALBUM">Photo Album</option>
+                        <option value="COVER_PAGE">Cover Page</option>
+                        <option value="SHORT_VIDEOS">Short Videos</option>
+                        <option value="REELS">Reels</option>
+                        <option value="SHORTS">Shorts</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-xs text-muted-foreground mb-1">Description</label>
+                      <textarea
+                        value={newAlbumDescription}
+                        onChange={(e) => setNewAlbumDescription(e.target.value)}
+                        placeholder="Enter description..."
+                        rows={2}
+                        className="w-full px-3 py-2 bg-background border border-border rounded-lg text-sm"
+                      />
+                    </div>
+                  </div>
+                )}
+
+                <div className="flex justify-end gap-2 pt-4">
+                  <button
+                    onClick={closeModals}
+                    className="px-4 py-2 border border-border rounded-lg hover:bg-muted"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleCopy}
+                    disabled={operating || creatingAlbum || (albumSelectionMode === 'existing' ? !targetAlbumId : !newAlbumName.trim())}
+                    className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg disabled:opacity-50"
+                  >
+                    {operating || creatingAlbum ? <Loader2 className="w-4 h-4 animate-spin" /> : <Copy className="w-4 h-4" />}
+                    {creatingAlbum ? 'Creating...' : 'Copy'}
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
         )}
       </main>

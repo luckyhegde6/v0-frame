@@ -3,6 +3,7 @@
 
 import fs from 'fs/promises';
 import path from 'path';
+import os from 'os';
 import sharp from 'sharp';
 import prisma from '@/lib/prisma';
 
@@ -13,14 +14,43 @@ const STORAGE_DIR = process.env.STORAGE_DIR || '/tmp/storage';
  * Safe to regenerate - overwrites existing thumbnails
  */
 export async function handleThumbnailGeneration(payload: any, jobId: string): Promise<void> {
-  const { imageId, originalPath, sizes } = payload;
+  let { imageId, originalPath, sizes } = payload;
 
   console.log(`[Thumbnail Handler] Generating thumbnails for: ${imageId}`, { sizes });
 
   // 1. Validate original file exists
+  let fileExists = false;
   try {
     await fs.access(originalPath);
+    fileExists = true;
   } catch {
+    console.error(`[Thumbnail Handler] Original image not found at: ${originalPath}`);
+    // Try to find the file in common temp locations
+    const tempLocations = [
+      path.join(process.env.STORAGE_DIR || '/tmp/storage', 'temp', 'ingest', path.basename(originalPath)),
+      path.join(process.env.TEMP || '/tmp', 'v0-frame', 'ingest', path.basename(originalPath)),
+      path.join(os.tmpdir(), 'v0-frame', 'ingest', path.basename(originalPath)),
+    ];
+    
+    for (const loc of tempLocations) {
+      try {
+        await fs.access(loc);
+        console.log(`[Thumbnail Handler] Found image at alternative location: ${loc}`);
+        originalPath = loc;
+        fileExists = true;
+        break;
+      } catch {
+        // Continue to next location
+      }
+    }
+  }
+
+  if (!fileExists) {
+    // Mark image as failed
+    await prisma.image.update({
+      where: { id: imageId },
+      data: { status: 'FAILED' }
+    });
     throw new Error(`Original image not found at: ${originalPath}`);
   }
 

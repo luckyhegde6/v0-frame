@@ -28,3 +28,9 @@ yarn-error.log*
 next-env.d.ts
 
 nul
+
+#for storage of temporary files
+tmp
+storage
+public/storage
+public/tmp

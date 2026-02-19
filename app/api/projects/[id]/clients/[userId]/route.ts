@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth/auth'
 import prisma from '@/lib/prisma'
+import { logClientAccessRevoked } from '@/lib/audit'
 
 export async function DELETE(
   request: NextRequest,
@@ -14,10 +15,13 @@ export async function DELETE(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
+    const userRole = session.user.role
+    const isAdmin = userRole === 'ADMIN' || userRole === 'SUPERADMIN'
+
     const project = await prisma.project.findFirst({
       where: { 
         id,
-        ownerId: session.user.id 
+        ...(isAdmin ? {} : { ownerId: session.user.id })
       }
     })
 
@@ -39,6 +43,8 @@ export async function DELETE(
     await prisma.clientProjectAccess.delete({
       where: { id: access.id }
     })
+
+    await logClientAccessRevoked(id, userId, session.user.id, { projectName: project.name })
 
     return NextResponse.json({ success: true })
   } catch (error) {

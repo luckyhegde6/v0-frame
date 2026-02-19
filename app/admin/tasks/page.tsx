@@ -24,10 +24,12 @@ import {
   XCircle,
   Clock,
   AlertCircle,
-  Settings
+  Settings,
+  UserPlus,
+  Link as LinkIcon
 } from 'lucide-react'
 import Link from 'next/link'
-import { handleApiError } from '@/lib/error-handler'
+import { handleApiError, showSuccess } from '@/lib/error-handler'
 
 interface Task {
   id: string
@@ -38,6 +40,7 @@ interface Task {
   title: string
   description: string | null
   error: string | null
+  payload: Record<string, unknown> | null
   createdAt: string
   startedAt: string | null
   completedAt: string | null
@@ -142,6 +145,57 @@ export default function AdminTasksPage() {
       }
     } catch (error) {
       handleApiError(error, 'CancelTask')
+    }
+  }
+
+  const handleTaskAction = async (taskId: string, action: string) => {
+    try {
+      const response = await fetch(`/api/admin/tasks/${taskId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action })
+      })
+
+      if (response.ok) {
+        showSuccess(`Task ${action}d`)
+        fetchTasks()
+      }
+    } catch (error) {
+      handleApiError(error, 'TaskAction')
+    }
+  }
+
+  const handleAssignToSelf = async (taskId: string) => {
+    try {
+      const response = await fetch(`/api/admin/tasks/${taskId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'assign' })
+      })
+
+      if (response.ok) {
+        showSuccess('Task assigned to you')
+        fetchTasks()
+      }
+    } catch (error) {
+      handleApiError(error, 'AssignTask')
+    }
+  }
+
+  const handleDeleteTask = async (taskId: string) => {
+    if (!confirm('Are you sure you want to delete this task?')) return
+    
+    try {
+      const response = await fetch(`/api/admin/tasks/${taskId}`, {
+        method: 'DELETE'
+      })
+
+      if (response.ok) {
+        showSuccess('Task deleted')
+        fetchTasks()
+      }
+    } catch (error) {
+      handleApiError(error, 'DeleteTask')
     }
   }
 
@@ -262,6 +316,7 @@ export default function AdminTasksPage() {
             {tasks.map(task => {
               const TaskIcon = getTaskTypeInfo(task.type).icon
               const priorityInfo = PRIORITIES.find(p => p.value === task.priority)
+              const isShareRequest = task.type === 'SHARE_REQUEST'
               
               return (
                 <div
@@ -278,6 +333,11 @@ export default function AdminTasksPage() {
                       <span className={`text-xs ${priorityInfo?.color}`}>
                         {priorityInfo?.label}
                       </span>
+                      {isShareRequest && task.payload && (
+                        <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded">
+                          Share Request
+                        </span>
+                      )}
                     </div>
                     {task.description && (
                       <p className="text-sm text-muted-foreground truncate">{task.description}</p>
@@ -286,9 +346,16 @@ export default function AdminTasksPage() {
                       <span>{task.type}</span>
                       <span>Created: {new Date(task.createdAt).toLocaleString()}</span>
                       {task.createdBy && (
-                        <span>By: {task.createdBy.email}</span>
+                        <span>Assigned to: {task.createdBy.email}</span>
                       )}
                     </div>
+                    {isShareRequest && task.payload && (
+                      <div className="flex items-center gap-2 mt-2 text-xs">
+                        <span className="text-muted-foreground">Project: {(task.payload as Record<string, unknown>).projectName as string}</span>
+                        <span className="text-muted-foreground">|</span>
+                        <span className="text-muted-foreground">Requested by: {(task.payload as Record<string, unknown>).requestedByEmail as string}</span>
+                      </div>
+                    )}
                   </div>
 
                   {task.status === 'RUNNING' && (
@@ -306,16 +373,129 @@ export default function AdminTasksPage() {
                     </div>
                   )}
 
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1">
                     {getStatusIcon(task.status)}
-                    {['PENDING', 'QUEUED'].includes(task.status) && (
+                    
+                    {/* Action Buttons */}
+                    {task.status === 'PENDING' && (
+                      <>
+                        <button
+                          onClick={() => handleAssignToSelf(task.id)}
+                          className="p-2 hover:bg-muted rounded-lg transition-colors text-muted-foreground hover:text-primary"
+                          title="Assign to me"
+                        >
+                          <UserPlus className="w-4 h-4" />
+                        </button>
+                        {isShareRequest && task.payload && (
+                          <Link
+                            href={`/projects/${(task.payload as Record<string, unknown>).projectId}?tab=settings`}
+                            className="p-2 hover:bg-muted rounded-lg transition-colors text-muted-foreground hover:text-primary"
+                            title="Go to project settings"
+                          >
+                            <LinkIcon className="w-4 h-4" />
+                          </Link>
+                        )}
+                        <button
+                          onClick={() => handleDeleteTask(task.id)}
+                          className="p-2 hover:bg-muted rounded-lg transition-colors text-muted-foreground hover:text-destructive"
+                          title="Delete task"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </>
+                    )}
+                    
+                    {task.status === 'QUEUED' && (
+                      <>
+                        <button
+                          onClick={() => handleTaskAction(task.id, 'start')}
+                          className="p-2 hover:bg-muted rounded-lg transition-colors text-muted-foreground hover:text-green-500"
+                          title="Start task"
+                        >
+                          <Play className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => handleTaskAction(task.id, 'reset')}
+                          className="p-2 hover:bg-muted rounded-lg transition-colors text-muted-foreground hover:text-yellow-500"
+                          title="Reset to pending"
+                        >
+                          <RotateCcw className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteTask(task.id)}
+                          className="p-2 hover:bg-muted rounded-lg transition-colors text-muted-foreground hover:text-destructive"
+                          title="Delete task"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </>
+                    )}
+                    
+                    {task.status === 'RUNNING' && (
+                      <>
+                        <button
+                          onClick={() => handleTaskAction(task.id, 'complete')}
+                          className="p-2 hover:bg-muted rounded-lg transition-colors text-muted-foreground hover:text-green-500"
+                          title="Mark complete"
+                        >
+                          <CheckCircle className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => handleTaskAction(task.id, 'fail')}
+                          className="p-2 hover:bg-muted rounded-lg transition-colors text-muted-foreground hover:text-red-500"
+                          title="Mark failed"
+                        >
+                          <XCircle className="w-4 h-4" />
+                        </button>
+                      </>
+                    )}
+                    
+                    {task.status === 'FAILED' && (
+                      <>
+                        <button
+                          onClick={() => handleTaskAction(task.id, 'reset')}
+                          className="p-2 hover:bg-muted rounded-lg transition-colors text-muted-foreground hover:text-yellow-500"
+                          title="Retry task"
+                        >
+                          <RotateCcw className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteTask(task.id)}
+                          className="p-2 hover:bg-muted rounded-lg transition-colors text-muted-foreground hover:text-destructive"
+                          title="Delete task"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </>
+                    )}
+                    
+                    {task.status === 'COMPLETED' && (
                       <button
-                        onClick={() => handleCancelTask(task.id)}
+                        onClick={() => handleDeleteTask(task.id)}
                         className="p-2 hover:bg-muted rounded-lg transition-colors text-muted-foreground hover:text-destructive"
-                        title="Cancel task"
+                        title="Delete task"
                       >
-                        <X className="w-4 h-4" />
+                        <Trash2 className="w-4 h-4" />
                       </button>
+                    )}
+                    
+                    {task.status === 'CANCELLED' && (
+                      <>
+                        <button
+                          onClick={() => handleTaskAction(task.id, 'reset')}
+                          className="p-2 hover:bg-muted rounded-lg transition-colors text-muted-foreground hover:text-yellow-500"
+                          title="Reset task"
+                        >
+                          <RotateCcw className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteTask(task.id)}
+                          className="p-2 hover:bg-muted rounded-lg transition-colors text-muted-foreground hover:text-destructive"
+                          title="Delete task"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </>
                     )}
                   </div>
                 </div>

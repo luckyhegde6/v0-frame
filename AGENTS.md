@@ -17,6 +17,13 @@ This document provides guidelines for AI agents working on this FRAME image gall
 pnpm dev                    # Start development server (Next.js)
 pnpm local                  # Full local setup: docker + db + seed + dev
 
+# IMPORTANT: Always kill the dev server after debugging/testing
+# Run "pnpm dev" in background, then kill when done:
+#   Windows: taskkill /F /IM node.exe   OR   npx kill-port 3000
+#   Linux/Mac: pkill -f "next dev"      OR   npx kill-port 3000
+# Failing to do so will cause port/lock conflicts:
+#   "Port 3000 is in use" / "Unable to acquire lock"
+
 # Build
 pnpm build                  # Production build (includes db:generate)
 
@@ -278,6 +285,25 @@ Place tests in `__tests__/` directory:
 - Component tests alongside source: `Component.test.tsx`
 
 Follow TDD principles - write tests before implementation for complex logic.
+
+## Storage Conventions
+
+See `.ai/docs/storage.md` for complete storage documentation.
+
+### Quick Reference
+
+| Type | Local Path | S3/R2 Key |
+|------|------------|-----------|
+| Temp | `storage/temp/ingest/{id}.{ext}` | `temp/ingest/{id}.{ext}` |
+| User Gallery | `storage/user/{userId}/Gallery/images/{id}.{ext}` | `user/{userId}/Gallery/images/{id}.{ext}` |
+| Project Album | `storage/projects/{projectId}/albums/{albumId}/{id}.{ext}` | `projects/{projectId}/albums/{albumId}/{id}.{ext}` |
+| Thumbnails | `storage/thumbnails/{imageId}/thumb-{size}.jpg` | `thumbnails/{imageId}/thumb-{size}.jpg` |
+| Processed | `storage/processed/{imageId}/{quality}.{ext}` | `processed/{imageId}/{quality}.{ext}` |
+| Bin | `storage/bin/{originalPath}/{id}.{ext}` | `bin/{originalPath}/{id}.{ext}` |
+
+### Album vs Gallery
+- **Gallery** (`/admin/gallery`): Direct user images
+- **Albums** (`/admin/albums`): Project-organized media
 
 ---
 

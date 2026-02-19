@@ -101,7 +101,6 @@ export default function ProjectsPage() {
       setNewStartDate('')
       setNewBranding(false)
       
-      await createShareLink(data.project.id)
       fetchProjects()
     } catch (error) {
       handleApiError(error, 'CreateProject')

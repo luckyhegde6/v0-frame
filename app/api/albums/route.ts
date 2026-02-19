@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth/auth'
 import prisma from '@/lib/prisma'
 import { logAlbumCreated } from '@/lib/audit'
+import { isAdmin, getAccessibleProjectIds, checkProjectAccess } from '@/lib/auth/access'
 
 export async function GET(request: NextRequest) {
   try {
@@ -13,10 +14,16 @@ export async function GET(request: NextRequest) {
 
     const userRole = session.user.role
     
-    // ADMIN and SUPERADMIN can see all albums
-    let whereClause: { ownerId?: string } = {}
-    if (userRole !== 'ADMIN' && userRole !== 'SUPERADMIN') {
-      whereClause = { ownerId: session.user.id }
+    let whereClause: { OR?: Array<{ ownerId: string } | { projectId: { in: string[] } }> } = {}
+    
+    if (!isAdmin(userRole)) {
+      const accessibleProjectIds = await getAccessibleProjectIds(session.user.id, userRole)
+      whereClause = {
+        OR: [
+          { ownerId: session.user.id },
+          { projectId: { in: accessibleProjectIds } }
+        ]
+      }
     }
 
     const albums = await prisma.album.findMany({
@@ -29,7 +36,7 @@ export async function GET(request: NextRequest) {
           select: { id: true, name: true, email: true }
         },
         _count: {
-          select: { images: true }
+          select: { images: true, albumImages: true }
         }
       },
       orderBy: { updatedAt: 'desc' }
@@ -45,7 +52,7 @@ export async function GET(request: NextRequest) {
       ownerId: album.ownerId,
       ownerName: album.owner.name,
       ownerEmail: album.owner.email,
-      imageCount: album._count.images,
+      imageCount: album._count.images + album._count.albumImages,
       coverImage: album.coverImage,
       createdAt: album.createdAt.toISOString(),
       updatedAt: album.updatedAt.toISOString()
@@ -79,28 +86,37 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Validate projectId if provided
+    let albumOwnerId = session.user.id
+
     if (projectId) {
+      const projectAccess = await checkProjectAccess(projectId, session.user.id, session.user.role)
+      
+      if (!projectAccess.hasAccess) {
+        return NextResponse.json(
+          { error: 'Access denied to this project' },
+          { status: 403 }
+        )
+      }
+      
       const project = await prisma.project.findFirst({
-        where: { 
-          id: projectId,
-          ownerId: session.user.id
-        }
+        where: { id: projectId }
       })
       
-      // ADMIN/SUPERADMIN can create albums in any project
-      if (!project && session.user.role !== 'ADMIN' && session.user.role !== 'SUPERADMIN') {
+      if (!project) {
         return NextResponse.json(
-          { error: 'Project not found or access denied' },
+          { error: 'Project not found' },
           { status: 404 }
         )
       }
+      
+      albumOwnerId = project.ownerId
     }
 
+    // Check for duplicate album name in the same project
     const existingAlbum = await prisma.album.findFirst({
       where: {
         name: name.trim(),
-        ownerId: session.user.id,
+        ownerId: albumOwnerId,
         projectId: projectId || null
       }
     })
@@ -117,12 +133,12 @@ export async function POST(request: NextRequest) {
         name: name.trim(),
         description: description?.trim() || null,
         category: category || 'PHOTO_ALBUM',
-        ownerId: session.user.id,
+        ownerId: albumOwnerId,
         projectId: projectId || null
       }
     })
 
-    await logAlbumCreated(album.id, album.projectId || '', session.user.id, { name: album.name, category: album.category })
+    await logAlbumCreated(album.id, session.user.id, album.projectId || null, { name: album.name, category: album.category })
 
     return NextResponse.json({
       album: {

@@ -9,11 +9,22 @@ datasource db {
   provider = "postgresql"
 }
 
+// Storage Type for Gallery vs Album separation
+enum StorageType {
+  GALLERY    // Personal gallery images (owned by user)
+  ALBUM      // Album-specific images (owned by album context)
+}
+
 // Phase 1, 2, 3 & 4: Image Ingestion, Processing, Ownership and Projects
 model Image {
   id        String      @id @default(cuid())
   status    ImageStatus
   title     String?
+  
+  // Storage type determines ownership context
+  // GALLERY: userId is the owner, image appears in user's gallery
+  // ALBUM: userId is uploader, albumId determines ownership context
+  storageType  StorageType @default(GALLERY)
   
   // Phase 1: Required for ingestion
   tempPath  String      // Absolute path to temp file
@@ -30,6 +41,10 @@ model Image {
   // Phase 3: Ownership & Enriched Metadata
   userId          String
   user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  // Album context (only set when storageType = ALBUM)
+  albumId         String?
+  album           Album?   @relation(fields: [albumId], references: [id], onDelete: Cascade)
   
   // EXIF Enrichment (Phase 3)
   make            String?  // Camera manufacturer
@@ -58,6 +73,8 @@ model Image {
   @@index([status])
   @@index([checksum])
   @@index([userId])
+  @@index([storageType])
+  @@index([albumId])
   @@index([createdAt])
 }
 
@@ -241,8 +258,9 @@ model Album {
   projectId   String?
   project     Project?     @relation(fields: [projectId], references: [id], onDelete: SetNull)
   
-  // Relations
-  images      AlbumImage[]
+  // Relations - images now directly owned by album (storageType = ALBUM)
+  images      Image[]      // Direct images with storageType = ALBUM
+  albumImages AlbumImage[] // Legacy junction table for backwards compatibility
   settings    AlbumSettings?
   clientAccess ClientAlbumAccess[]
   
@@ -399,45 +417,82 @@ model ProProfile {
 
 // Audit Action Enum
 enum AuditAction {
-  // User actions
-  USER_CREATED
-  USER_UPDATED
-  USER_DELETED
-  USER_LOGIN
-  USER_LOGOUT
+  // ============================================
+  // USER ACTIONS
+  // ============================================
+  USER_CREATED              // Admin created a new user
+  USER_UPDATED              // User profile updated
+  USER_DELETED              // User account deleted
+  USER_ROLE_CHANGED         // User role changed (USER, CLIENT, PRO, ADMIN, SUPERADMIN)
+  USER_LOGIN               // User logged in
+  USER_LOGOUT              // User logged out
+  USER_PASSWORD_CHANGED    // User changed password
   
-  // Project actions
-  PROJECT_CREATED
-  PROJECT_UPDATED
-  PROJECT_DELETED
+  // ============================================
+  // PROJECT ACTIONS  
+  // ============================================
+  PROJECT_CREATED           // New project created
+  PROJECT_UPDATED           // Project details updated
+  PROJECT_DELETED           // Project deleted
   
-  // Album actions
-  ALBUM_CREATED
-  ALBUM_UPDATED
-  ALBUM_DELETED
+  // ============================================
+  // ALBUM ACTIONS
+  // ============================================
+  ALBUM_CREATED            // New album created
+  ALBUM_UPDATED            // Album details updated
+  ALBUM_DELETED            // Album deleted
+  ALBUM_IMAGE_ADDED       // Images added to album
+  ALBUM_IMAGE_REMOVED     // Images removed from album
   
-  // Share actions
-  SHARE_LINK_CREATED
-  SHARE_LINK_REVOKED
-  SHARE_LINK_ACCESSED
+  // ============================================
+  // IMAGE ACTIONS
+  // ============================================
+  IMAGE_UPLOADED           // New image uploaded
+  IMAGE_DELETED            // Image deleted
+  IMAGE_MOVED              // Image moved between locations
+  IMAGE_COPIED             // Image copied to another location
+  IMAGE_CLONED             // Image cloned (admin feature)
   
-  // Job actions
-  JOB_CREATED
-  JOB_STARTED
-  JOB_COMPLETED
-  JOB_FAILED
+  // ============================================
+  // JOB ACTIONS
+  // ============================================
+  JOB_CREATED              // Background job created
+  JOB_STARTED              // Job started processing
+  JOB_COMPLETED            // Job completed successfully
+  JOB_FAILED              // Job failed
   
-  // Storage actions
-  STORAGE_USAGE_CHANGED
-  QUOTA_EXCEEDED
+  // ============================================
+  // CLIENT ACCESS ACTIONS
+  // ============================================
+  CLIENT_ACCESS_GRANTED    // Client access to project/album granted
+  CLIENT_ACCESS_REVOKED    // Client access revoked
+  CLIENT_ACCESS_MODIFIED   // Client access level changed
   
-  // Access actions
-  ACCESS_GRANTED
-  ACCESS_REVOKED
-  ACCESS_MODIFIED
+  // ============================================
+  // SHARE LINK ACTIONS
+  // ============================================
+  SHARE_LINK_CREATED       // Share link generated
+  SHARE_LINK_REVOKED       // Share link revoked/disabled
+  SHARE_LINK_ACCESSED      // Share link accessed
+  SHARE_LINK_REQUESTED     // Share link requested
   
-  // Settings actions
-  SETTINGS_UPDATED
+  // ============================================
+  // SETTINGS ACTIONS
+  // ============================================
+  SETTINGS_CHANGED         // System or user settings changed
+  ALBUM_SETTINGS_CHANGED  // Album-specific settings changed
+  
+  // ============================================
+  // STORAGE ACTIONS
+  // ============================================
+  STORAGE_QUOTA_CHANGED    // Storage quota updated
+  STORAGE_WARNING          // Storage usage warning
+  
+  // ============================================
+  // ADMIN ACTIONS
+  // ============================================
+  SYSTEM_CONFIG_CHANGED    // System configuration changed
+  BULK_OPERATION           // Bulk operation performed (admin)
 }
 
 // Audit Log
@@ -451,6 +506,9 @@ model AuditLog {
   oldValue    Json?
   newValue    Json?
   
+  // Metadata
+  metadata    Json?
+  
   // User info
   userId      String?
   user        User?       @relation(fields: [userId], references: [id], onDelete: SetNull)
@@ -458,7 +516,7 @@ model AuditLog {
   userName    String?
   userRole    Role?
   
-  // Metadata
+  // Request info
   ipAddress   String?
   userAgent   String?
   description String?
@@ -575,6 +633,10 @@ enum TaskType {
   CLEANUP_TEMP
   OPTIMIZE_STORAGE
   SYNC_USERS
+  
+  // Share operations
+  SHARE_REQUEST
+  FACE_RECOGNITION
 }
 
 enum TaskStatus {

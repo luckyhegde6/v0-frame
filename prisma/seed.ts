@@ -11,8 +11,14 @@ async function main() {
     { email: adminEmail, name: 'Super Admin', password: adminPassword, role: 'SUPERADMIN' },
     { email: 'admin2@frame.app', name: 'Admin User', password: 'admin123', role: 'ADMIN' },
     { email: 'user@frame.app', name: 'Regular User', password: 'user123', role: 'USER' },
+    { email: 'user2@frame.app', name: 'User Two', password: 'user123', role: 'USER' },
+    { email: 'user3@frame.app', name: 'User Three', password: 'user123', role: 'USER' },
     { email: 'pro@frame.app', name: 'Pro User', password: 'pro123', role: 'PRO' },
+    { email: 'pro2@frame.app', name: 'Pro User Two', password: 'pro123', role: 'PRO' },
+    { email: 'pro3@frame.app', name: 'Pro User Three', password: 'pro123', role: 'PRO' },
     { email: 'client@frame.app', name: 'Client User', password: 'client123', role: 'CLIENT' },
+    { email: 'client2@frame.app', name: 'Client Two', password: 'client123', role: 'CLIENT' },
+    { email: 'client3@frame.app', name: 'Client Three', password: 'client123', role: 'CLIENT' },
   ]
 
   for (const userData of demoUsers) {
@@ -41,9 +47,9 @@ async function main() {
   console.log('\n=== Demo Credentials ===')
   console.log('SUPERADMIN: admin@frame.app / admin123')
   console.log('ADMIN: admin2@frame.app / admin123')
-  console.log('USER: user@frame.app / user123')
-  console.log('PRO: pro@frame.app / pro123')
-  console.log('CLIENT: client@frame.app / client123')
+  console.log('USER: user@frame.app / user123, user2@frame.app / user123, user3@frame.app / user123')
+  console.log('PRO: pro@frame.app / pro123, pro2@frame.app / pro123, pro3@frame.app / pro123')
+  console.log('CLIENT: client@frame.app / client123, client2@frame.app / client123, client3@frame.app / client123')
 }
 
 main()

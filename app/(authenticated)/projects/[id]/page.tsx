@@ -7,7 +7,7 @@ import {
   Folder, ArrowLeft, Loader2, Settings, Users, Image, 
   Share2, QrCode, Copy, X, ExternalLink, Calendar, 
   Palette, Image as ImageIcon, Plus, Trash2, Pencil,
-  MoreVertical, Download, Eye, Film, FileImage, Video, Play, Upload
+  MoreVertical, Download, Eye, Film, FileImage, Video, Play, Upload, RefreshCw
 } from 'lucide-react'
 import { handleApiError, showSuccess } from '@/lib/error-handler'
 import QRCode from 'qrcode'
@@ -78,10 +78,24 @@ export default function ProjectDetailPage() {
   const [copied, setCopied] = useState(false)
   const [newClientEmail, setNewClientEmail] = useState('')
   const [newClientAccess, setNewClientAccess] = useState('READ')
+  const [selectedClientId, setSelectedClientId] = useState('')
   const [users, setUsers] = useState<{id: string, name: string | null, email: string | null}[]>([])
   const [searchEmail, setSearchEmail] = useState('')
   const [creating, setCreating] = useState(false)
+  const [currentUserRole, setCurrentUserRole] = useState<string | null>(null)
   const qrCanvasRef = useRef<HTMLCanvasElement>(null)
+
+  useEffect(() => {
+    // Fetch current user info to get role
+    fetch('/api/profile')
+      .then(res => res.json())
+      .then(data => {
+        if (data.user) {
+          setCurrentUserRole(data.user.role)
+        }
+      })
+      .catch(() => {})
+  }, [])
 
   useEffect(() => {
     if (projectId) {
@@ -200,6 +214,12 @@ export default function ProjectDetailPage() {
         body: JSON.stringify({ projectId })
       })
 
+      if (response.status === 409) {
+        const data = await response.json()
+        alert('A share link already exists for this project. Only one share link is allowed per project.')
+        return
+      }
+
       if (response.ok) {
         const data = await response.json()
         const baseUrl = window.location.origin
@@ -222,6 +242,53 @@ export default function ProjectDetailPage() {
     }
   }
 
+  const handleRegenerateShareLink = async () => {
+    if (!confirm('Are you sure you want to regenerate the share link? This will invalidate the current link.')) {
+      return
+    }
+
+    try {
+      const response = await fetch('/api/share', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ projectId })
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        showSuccess('Share link regenerated successfully!')
+        fetchShareLinks()
+      } else if (response.status === 403) {
+        alert('Only ADMIN or SUPERADMIN can regenerate share links.')
+      }
+    } catch (error) {
+      handleApiError(error, 'RegenerateShareLink')
+    }
+  }
+
+  const handleRequestShareLink = async () => {
+    try {
+      const response = await fetch('/api/share/request', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ projectId })
+      })
+
+      if (response.status === 409) {
+        const data = await response.json()
+        alert(data.error || 'A request already exists or link already exists.')
+        return
+      }
+
+      if (response.ok) {
+        const data = await response.json()
+        showSuccess(data.message)
+      }
+    } catch (error) {
+      handleApiError(error, 'RequestShareLink')
+    }
+  }
+
   const handleCopyLink = (url: string) => {
     navigator.clipboard.writeText(url)
     setCopied(true)
@@ -230,22 +297,19 @@ export default function ProjectDetailPage() {
 
   const handleAddClient = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!newClientEmail) return
+    if (!selectedClientId) {
+      alert('Please select a user from the dropdown')
+      return
+    }
 
     setCreating(true)
     try {
-      const user = users.find(u => u.email === newClientEmail)
-      if (!user) {
-        alert('Please select a user from the dropdown')
-        setCreating(false)
-        return
-      }
 
       const response = await fetch(`/api/projects/${projectId}/clients`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          userId: user.id,
+          userId: selectedClientId,
           accessLevel: newClientAccess
         })
       })
@@ -254,7 +318,9 @@ export default function ProjectDetailPage() {
         showSuccess('Client access granted!')
         setShowAddClientModal(false)
         setNewClientEmail('')
+        setSelectedClientId('')
         setSearchEmail('')
+        setUsers([])
         fetchClients()
       }
     } catch (error) {
@@ -585,13 +651,33 @@ export default function ProjectDetailPage() {
             <div className="bg-card border border-border rounded-2xl p-6">
               <h2 className="text-lg font-semibold mb-4">Share Links</h2>
               <div className="flex gap-2 mb-4">
-                <button
-                  onClick={handleCreateShareLink}
-                  className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:opacity-90"
-                >
-                  <QrCode className="w-4 h-4" />
-                  Generate Link
-                </button>
+                {currentUserRole && (currentUserRole === 'ADMIN' || currentUserRole === 'SUPERADMIN') ? (
+                  <button
+                    onClick={handleCreateShareLink}
+                    disabled={shareLinks.length > 0}
+                    className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <QrCode className="w-4 h-4" />
+                    {shareLinks.length > 0 ? 'Link Already Exists' : 'Generate Link'}
+                  </button>
+                ) : currentUserRole && shareLinks.length === 0 ? (
+                  <button
+                    onClick={handleRequestShareLink}
+                    className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:opacity-90"
+                  >
+                    <QrCode className="w-4 h-4" />
+                    Request Link
+                  </button>
+                ) : null}
+                {shareLinks.length > 0 && currentUserRole && (currentUserRole === 'PRO' || currentUserRole === 'USER') && (
+                  <button
+                    onClick={handleRegenerateShareLink}
+                    className="flex items-center gap-2 px-4 py-2 bg-secondary text-secondary-foreground rounded-lg hover:opacity-90"
+                  >
+                    <RefreshCw className="w-4 h-4" />
+                    Request Regeneration
+                  </button>
+                )}
               </div>
 
               {shareLinks.length > 0 ? (
@@ -616,7 +702,7 @@ export default function ProjectDetailPage() {
                   ))}
                 </div>
               ) : (
-                <p className="text-muted-foreground text-sm">No share links yet</p>
+                <p className="text-muted-foreground text-sm">No share links yet. Generate one to share this project.</p>
               )}
             </div>
 
@@ -774,7 +860,7 @@ export default function ProjectDetailPage() {
                             type="button"
                             onClick={() => {
                               setNewClientEmail(user.email || '')
-                              setUsers([])
+                              setSelectedClientId(user.id)
                             }}
                             className="w-full px-4 py-2 text-left hover:bg-muted flex items-center gap-2"
                           >
@@ -806,7 +892,12 @@ export default function ProjectDetailPage() {
                 <div className="flex gap-3 mt-6">
                   <button
                     type="button"
-                    onClick={() => setShowAddClientModal(false)}
+                    onClick={() => {
+                      setShowAddClientModal(false)
+                      setNewClientEmail('')
+                      setSelectedClientId('')
+                      setUsers([])
+                    }}
                     className="flex-1 px-4 py-2 border border-border rounded-lg hover:bg-muted"
                   >
                     Cancel

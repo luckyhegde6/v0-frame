@@ -13,7 +13,11 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const userId = searchParams.get('userId')
 
-    const where: Record<string, unknown> = {}
+    // Admin gallery only shows GALLERY type images
+    // ALBUM type images are managed via /api/admin/albums
+    const where: Record<string, unknown> = {
+      storageType: 'GALLERY'
+    }
     if (userId) {
       where.userId = userId
     }
@@ -25,13 +29,13 @@ export async function GET(request: NextRequest) {
         take: 100
       }),
       prisma.collection.findMany({
-        where,
+        where: userId ? { userId } : {},
         include: {
           _count: { select: { images: true } }
         }
       }),
       prisma.project.findMany({
-        where: { ownerId: userId || undefined },
+        where: userId ? { ownerId: userId } : {},
         include: {
           _count: { select: { images: true } }
         }
@@ -45,6 +49,7 @@ export async function GET(request: NextRequest) {
         userId: img.userId,
         sizeBytes: img.sizeBytes,
         status: img.status,
+        storageType: img.storageType,
         createdAt: img.createdAt
       })),
       collections: collections.map((c) => ({
@@ -91,6 +96,24 @@ export async function DELETE(request: NextRequest) {
     }
 
     if (type === 'image') {
+      // Only allow deleting GALLERY type images from admin gallery
+      // ALBUM images should be deleted via album management
+      const image = await prisma.image.findUnique({
+        where: { id },
+        select: { storageType: true }
+      })
+      
+      if (!image) {
+        return NextResponse.json({ error: 'Image not found' }, { status: 404 })
+      }
+      
+      if (image.storageType !== 'GALLERY') {
+        return NextResponse.json(
+          { error: 'Only GALLERY images can be deleted here. Use album management for ALBUM images.' },
+          { status: 400 }
+        )
+      }
+      
       await prisma.image.delete({ where: { id } })
     } else if (type === 'collection') {
       await prisma.collection.delete({ where: { id } })

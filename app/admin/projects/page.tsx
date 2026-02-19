@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { auth } from '@/lib/auth/auth'
 import { redirect } from 'next/navigation'
-import { FolderOpen, Users, Shield, Clock, Loader2, Search, Edit, Trash2, Eye, EyeOff, Check, X, ExternalLink, Link as LinkIcon } from 'lucide-react'
+import { FolderOpen, Users, Shield, Clock, Loader2, Search, Edit, Trash2, Eye, EyeOff, Check, X, ExternalLink, Link as LinkIcon, HardDrive } from 'lucide-react'
 import Link from 'next/link'
 import { handleApiError, showSuccess } from '@/lib/error-handler'
 
@@ -293,6 +293,13 @@ export default function AdminProjectsPage() {
                           title="View Project"
                         >
                           <Eye className="w-4 h-4 text-muted-foreground" />
+                        </Link>
+                        <Link
+                          href={`/admin/projects/${project.id}/structure`}
+                          className="p-2 hover:bg-muted rounded-lg transition-colors"
+                          title="View storage structure"
+                        >
+                          <HardDrive className="w-4 h-4 text-muted-foreground" />
                         </Link>
                         <button
                           onClick={() => setEditingProject(project.id)}

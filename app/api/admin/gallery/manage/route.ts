@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth/auth'
 import prisma from '@/lib/prisma'
+import { logImageDeleted } from '@/lib/audit'
 
 export async function POST(request: NextRequest) {
   try {
@@ -43,7 +44,20 @@ export async function POST(request: NextRequest) {
           continue
         }
 
-        if (action === 'move') {
+        // Gallery management only works with GALLERY type images
+        // ALBUM type images are managed via /api/albums/{id}/images
+        if (image.storageType !== 'GALLERY') {
+          results.failed = results.failed + 1
+          results.errors.push(`Image ${imageId} is not a gallery image (storageType: ${image.storageType})`)
+          continue
+        }
+
+        if (action === 'delete') {
+          await prisma.image.delete({
+            where: { id: imageId }
+          })
+          await logImageDeleted(imageId, session.user.id, { title: image.title || 'Unknown' })
+        } else if (action === 'move') {
           if (targetUserId && targetUserId !== image.userId) {
             await prisma.image.update({
               where: { id: imageId },
@@ -76,7 +90,8 @@ export async function POST(request: NextRequest) {
               height: image.height,
               sizeBytes: image.sizeBytes,
               userId: targetUserId || image.userId,
-              status: image.status
+              status: image.status,
+              storageType: 'GALLERY'
             }
           })
         } else if (action === 'clone') {
@@ -90,7 +105,8 @@ export async function POST(request: NextRequest) {
               height: image.height,
               sizeBytes: image.sizeBytes,
               userId: image.userId,
-              status: image.status
+              status: image.status,
+              storageType: 'GALLERY'
             }
           })
         }

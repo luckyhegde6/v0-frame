@@ -420,6 +420,91 @@ const additionalPaths: Record<string, unknown> = {
       }
     }
   },
+  '/api/albums/{id}/images': {
+    get: {
+      tags: ['Albums'],
+      summary: 'Get album images',
+      description: 'Get all images in a specific album',
+      security: [{ BearerAuth: [] }, { CookieAuth: [] }],
+      parameters: [
+        { name: 'id', in: 'path', required: true, schema: { type: 'string' } }
+      ],
+      responses: {
+        '200': {
+          description: 'List of album images',
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  images: { 
+                    type: 'array', 
+                    items: { 
+                      type: 'object',
+                      properties: {
+                        id: { type: 'string' },
+                        title: { type: 'string' },
+                        thumbnailPath: { type: 'string' },
+                        previewPath: { type: 'string' },
+                        width: { type: 'integer' },
+                        height: { type: 'integer' },
+                        mimeType: { type: 'string' },
+                        sizeBytes: { type: 'integer' },
+                        createdAt: { type: 'string', format: 'date-time' },
+                        addedAt: { type: 'string', format: 'date-time' }
+                      }
+                    } 
+                  }
+                }
+              }
+            }
+          }
+        },
+        '401': { description: 'Unauthorized' },
+        '404': { description: 'Album not found' }
+      }
+    },
+    delete: {
+      tags: ['Albums'],
+      summary: 'Remove images from album',
+      description: 'Remove images from an album (does not delete the images)',
+      security: [{ BearerAuth: [] }, { CookieAuth: [] }],
+      parameters: [
+        { name: 'id', in: 'path', required: true, schema: { type: 'string' } }
+      ],
+      requestBody: {
+        content: {
+          'application/json': {
+            schema: {
+              type: 'object',
+              required: ['imageIds'],
+              properties: {
+                imageIds: { type: 'array', items: { type: 'string' } }
+              }
+            }
+          }
+        }
+      },
+      responses: {
+        '200': { 
+          description: 'Images removed',
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  success: { type: 'boolean' },
+                  removedCount: { type: 'integer' }
+                }
+              }
+            }
+          }
+        },
+        '401': { description: 'Unauthorized' },
+        '404': { description: 'Album not found' }
+      }
+    }
+  },
   '/api/projects/{id}/clients': {
     get: {
       tags: ['Client Access'],

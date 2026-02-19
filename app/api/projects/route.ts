@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth/auth'
 import prisma from '@/lib/prisma'
 import { logProjectCreated } from '@/lib/audit'
+import { isAdmin, getAccessibleProjectIds } from '@/lib/auth/access'
 
 function serializeBigInt(obj: unknown): unknown {
   if (obj === null || obj === undefined) return obj
@@ -25,10 +26,10 @@ export async function GET(request: NextRequest) {
 
     const userRole = session.user.role
     
-    // ADMIN and SUPERADMIN can see all projects
-    let whereClause = {}
-    if (userRole !== 'ADMIN' && userRole !== 'SUPERADMIN') {
-      whereClause = { ownerId: session.user.id }
+    let whereClause: { id?: { in: string[] } } = {}
+    if (!isAdmin(userRole)) {
+      const accessibleProjectIds = await getAccessibleProjectIds(session.user.id, userRole)
+      whereClause = { id: { in: accessibleProjectIds } }
     }
 
     const projects = await prisma.project.findMany({
@@ -47,24 +48,79 @@ export async function GET(request: NextRequest) {
       orderBy: { updatedAt: 'desc' }
     })
 
-    const projectsWithStorage = projects.map((p) => ({
-      id: p.id,
-      name: p.name,
-      description: p.description,
-      eventName: p.eventName,
-      startDate: p.startDate,
-      branding: p.branding,
-      coverImage: p.coverImage,
-      ownerId: p.ownerId,
-      ownerName: p.owner.name,
-      ownerEmail: p.owner.email,
-      imageCount: p._count.images,
-      albumCount: p.albums.length,
-      storageQuota: p.quotaBytes.toString(),
-      storageUsed: p.storageUsed.toString(),
-      createdAt: p.createdAt,
-      updatedAt: p.updatedAt
-    }))
+    // Get album image counts for all albums
+    const allAlbumIds = projects.flatMap(p => p.albums.map(a => a.id))
+    
+    // Create a map of projectId -> Set of unique image IDs
+    const projectImageMap = new Map<string, Set<string>>()
+    
+    // Initialize sets for each project
+    for (const project of projects) {
+      projectImageMap.set(project.id, new Set())
+    }
+    
+    if (allAlbumIds.length > 0) {
+      // Get direct album images (images where albumId is set and storageType is ALBUM)
+      const directAlbumImages = await prisma.image.findMany({
+        where: { 
+          storageType: 'ALBUM'
+        },
+        select: { id: true, albumId: true }
+      })
+      
+      // Filter to only images in our albums
+      const filteredDirectImages = directAlbumImages.filter(img => 
+        img.albumId && allAlbumIds.includes(img.albumId)
+      )
+      
+      // Get junction table images
+      const junctionImages = await prisma.albumImage.findMany({
+        where: { albumId: { in: allAlbumIds } },
+        select: { imageId: true, albumId: true }
+      })
+      
+      // Add direct images to their project
+      for (const img of filteredDirectImages) {
+        if (img.albumId) {
+          const project = projects.find(p => p.albums.some(a => a.id === img.albumId))
+          if (project) {
+            projectImageMap.get(project.id)!.add(img.id)
+          }
+        }
+      }
+      
+      // Add junction images to their project
+      for (const junc of junctionImages) {
+        const project = projects.find(p => p.albums.some(a => a.id === junc.albumId))
+        if (project) {
+          projectImageMap.get(project.id)!.add(junc.imageId)
+        }
+      }
+    }
+
+    const projectsWithStorage = projects.map((p) => {
+      // Get unique image count for this project from the map
+      const projectAlbumImageCount = projectImageMap.get(p.id)?.size || 0
+      
+      return {
+        id: p.id,
+        name: p.name,
+        description: p.description,
+        eventName: p.eventName,
+        startDate: p.startDate,
+        branding: p.branding,
+        coverImage: p.coverImage,
+        ownerId: p.ownerId,
+        ownerName: p.owner.name,
+        ownerEmail: p.owner.email,
+        imageCount: p._count.images + projectAlbumImageCount,
+        albumCount: p.albums.length,
+        storageQuota: p.quotaBytes.toString(),
+        storageUsed: p.storageUsed.toString(),
+        createdAt: p.createdAt,
+        updatedAt: p.updatedAt
+      }
+    })
 
     return NextResponse.json({ projects: projectsWithStorage })
   } catch (error) {

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth/auth'
 import prisma from '@/lib/prisma'
+import { logClientAccessGranted, logClientAccessModified } from '@/lib/audit'
 
 export async function GET(
   request: NextRequest,
@@ -14,10 +15,13 @@ export async function GET(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
+    const userRole = session.user.role
+    const isAdmin = userRole === 'ADMIN' || userRole === 'SUPERADMIN'
+
     const project = await prisma.project.findFirst({
       where: { 
         id,
-        ownerId: session.user.id 
+        ...(isAdmin ? {} : { ownerId: session.user.id })
       }
     })
 
@@ -72,10 +76,13 @@ export async function POST(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
+    const userRole = session.user.role
+    const isAdmin = userRole === 'ADMIN' || userRole === 'SUPERADMIN'
+
     const project = await prisma.project.findFirst({
       where: { 
         id,
-        ownerId: session.user.id 
+        ...(isAdmin ? {} : { ownerId: session.user.id })
       }
     })
 
@@ -90,11 +97,12 @@ export async function POST(
       return NextResponse.json({ error: 'User ID is required' }, { status: 400 })
     }
 
-    const user = await prisma.user.findUnique({
+    // Check if user is PRO when assigning to their own project
+    const targetUser = await prisma.user.findUnique({
       where: { id: userId }
     })
 
-    if (!user) {
+    if (!targetUser) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 })
     }
 
@@ -112,6 +120,14 @@ export async function POST(
         where: { id: existingAccess.id },
         data: { accessLevel: accessLevel || 'READ' }
       })
+
+      await logClientAccessModified(
+        id,
+        userId,
+        existingAccess.accessLevel,
+        updatedAccess.accessLevel,
+        session.user.id
+      )
 
       return NextResponse.json({
         client: {
@@ -140,6 +156,14 @@ export async function POST(
         }
       }
     })
+
+    await logClientAccessGranted(
+      id,
+      userId,
+      clientAccess.accessLevel,
+      session.user.id,
+      { projectName: project.name }
+    )
 
     return NextResponse.json({
       client: {

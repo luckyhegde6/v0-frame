@@ -2,6 +2,7 @@ import NextAuth from 'next-auth'
 import Credentials from 'next-auth/providers/credentials'
 import bcrypt from 'bcryptjs'
 import prisma from '@/lib/prisma'
+import { logUserLogin } from '@/lib/audit'
 
 type Role = 'USER' | 'PRO' | 'CLIENT' | 'ADMIN' | 'SUPERADMIN'
 
@@ -106,7 +107,7 @@ export const {
     }),
   ],
   callbacks: {
-    async jwt({ token, user }) {
+    async jwt({ token, user, trigger }) {
       if (user) {
         token.id = user.id
         token.role = user.role
@@ -119,6 +120,16 @@ export const {
         session.user.role = token.role as Role
       }
       return session
+    },
+    async signIn({ user }) {
+      if (user?.id && user?.email) {
+        try {
+          await logUserLogin(user.id)
+        } catch (error) {
+          console.error('[Auth] Audit logging failed:', error)
+        }
+      }
+      return true
     },
   },
 })
