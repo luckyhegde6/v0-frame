@@ -269,7 +269,126 @@ When debugging an issue, provide:
 - Clean up disk space
 - Optimize network usage
 
-## Debugging Tools
+## Playwright MCP Debugging
+
+Playwright MCP provides browser automation for real-time debugging and E2E testing. Use it to debug UI issues, test user flows, and verify fixes.
+
+### Quick Start
+
+```bash
+# Start dev server first
+pnpm dev
+
+# Then use Playwright MCP tools to navigate and inspect
+```
+
+### Key Tools
+
+| Tool | Purpose | When to Use |
+|------|---------|-------------|
+| `playwright_browser_navigate` | Go to URL | Start debugging session |
+| `playwright_browser_snapshot` | Get accessibility tree | Better than screenshots for assertions |
+| `playwright_browser_click` | Click elements | Test interactions |
+| `playwright_browser_type` | Type text | Fill forms |
+| `playwright_browser_evaluate` | Run JavaScript | Fetch API data from browser |
+| `playwright_browser_console_messages` | Get console logs | Check for errors |
+| `playwright_browser_network_requests` | Get network requests | Verify API calls |
+| `playwright_browser_wait_for` | Wait for conditions | Handle async UI |
+| `playwright_browser_take_screenshot` | Capture screenshot | Document issues |
+| `playwright_browser_close` | Close browser | **Always call when done** |
+
+### Debugging Workflow
+
+1. **Navigate to affected page**
+   ```
+   playwright_browser_navigate: { url: "http://localhost:3000/admin/gallery" }
+   ```
+
+2. **Wait for page load**
+   ```
+   playwright_browser_wait_for: { time: 2 }
+   ```
+
+3. **Capture page state**
+   ```
+   playwright_browser_snapshot: {}
+   ```
+
+4. **Check for console errors**
+   ```
+   playwright_browser_console_messages: { level: "error" }
+   ```
+
+5. **Check network requests**
+   ```
+   playwright_browser_network_requests: { includeStatic: false }
+   ```
+
+6. **Fetch API data (if needed)**
+   ```
+   playwright_browser_evaluate: {
+     function: "() => fetch('/api/images').then(r => r.json())"
+   }
+   ```
+
+7. **Close browser when done**
+   ```
+   playwright_browser_close: {}
+   ```
+
+### Common Debugging Scenarios
+
+#### UI Not Rendering Correctly
+
+1. Navigate to page
+2. Take snapshot to see structure
+3. Check console for errors
+4. Check network requests for failed API calls
+5. Use `evaluate` to fetch API data directly
+
+#### API Issues
+
+1. Navigate to page that calls the API
+2. Use `evaluate` to call the API directly:
+   ```javascript
+   () => fetch('/api/endpoint', { method: 'POST', body: JSON.stringify(data) })
+     .then(r => r.json())
+   ```
+3. Check response data
+4. Check server logs if needed
+
+#### Form Submission Issues
+
+1. Navigate to form
+2. Take snapshot to find form fields
+3. Type into fields using `playwright_browser_type`
+4. Click submit button
+5. Wait for response
+6. Check console and network for errors
+
+### Best Practices
+
+- **Always close the browser** - Use `playwright_browser_close` to free resources
+- **Use snapshot over screenshot** - Accessibility trees are more reliable
+- **Check console after actions** - Catch JavaScript errors early
+- **Wait for page loads** - Use `wait_for` with time or text
+- **Dev server must be running** - Start with `pnpm dev` first
+
+### Example: Debug Image Count Issue
+
+```
+1. Navigate to /admin/projects
+2. Wait for load (2 seconds)
+3. Take snapshot - see what's displayed
+4. Use evaluate: fetch('/api/projects').then(r => r.json())
+5. Compare API data to UI display
+6. Identify discrepancy
+7. Fix code
+8. Refresh and verify
+9. Close browser
+```
+
+## Database Debugging Tools
 
 ### Database Queries
 

@@ -274,7 +274,7 @@ Required in `.env`:
 
 ## Testing
 
-The project uses Vitest for testing. Run tests with:
+The project uses Vitest for unit testing and Playwright MCP for E2E testing. Run tests with:
 - `pnpm test` - Run in watch mode
 - `pnpm test:run` - Run once
 - `pnpm test:coverage` - Run with coverage
@@ -285,6 +285,127 @@ Place tests in `__tests__/` directory:
 - Component tests alongside source: `Component.test.tsx`
 
 Follow TDD principles - write tests before implementation for complex logic.
+
+### Playwright MCP for E2E Testing
+
+Playwright MCP provides browser automation for end-to-end testing and debugging. Use it to:
+- Test user flows and interactions
+- Verify UI rendering and state
+- Debug issues in the running application
+- Take screenshots for documentation
+
+#### Key Playwright MCP Tools
+
+| Tool | Purpose | Example Usage |
+|------|---------|----------------|
+| `playwright_browser_navigate` | Navigate to URL | Navigate to login page |
+| `playwright_browser_snapshot` | Get page accessibility tree | Better than screenshots for assertions |
+| `playwright_browser_click` | Click elements | Click buttons, links |
+| `playwright_browser_type` | Type text | Fill form fields |
+| `playwright_browser_wait_for` | Wait for conditions | Wait for element/text |
+| `playwright_browser_evaluate` | Run JavaScript | Fetch API data from page |
+| `playwright_browser_take_screenshot` | Capture screenshot | Document UI state |
+| `playwright_browser_console_messages` | Get console logs | Check for errors |
+| `playwright_browser_network_requests` | Get network requests | Verify API calls |
+
+#### Best Practices for Playwright MCP
+
+1. **Use `snapshot` over `screenshot`** - Accessibility trees are more reliable for assertions
+2. **Wait for page load** - Use `wait_for` with time or text after navigation
+3. **Check console errors** - Always verify no console errors after actions
+4. **Close browser when done** - Always call `playwright_browser_close` to free resources
+5. **Use `evaluate` for API checks** - Fetch internal API data from the browser context
+
+#### Example: Testing User Flow
+
+```
+1. Navigate to page: playwright_browser_navigate
+2. Wait for load: playwright_browser_wait_for (time: 2)
+3. Take snapshot: playwright_browser_snapshot
+4. Click element: playwright_browser_click
+5. Verify result: playwright_browser_snapshot
+6. Check console: playwright_browser_console_messages (level: error)
+7. Close browser: playwright_browser_close
+```
+
+#### Example: Debugging API Issues
+
+```
+1. Navigate to page with issue
+2. Use playwright_browser_evaluate to fetch('/api/endpoint')
+3. Inspect response data
+4. Check playwright_browser_network_requests
+5. Check playwright_browser_console_messages for errors
+```
+
+### Memory MCP for Knowledge Graph
+
+Memory MCP provides a persistent knowledge graph for storing information across sessions:
+
+| Tool | Purpose |
+|------|---------|
+| `memory_create_entities` | Store new information |
+| `memory_create_relations` | Link entities |
+| `memory_add_observations` | Add details to entities |
+| `memory_search_nodes` | Find stored information |
+| `memory_read_graph` | Get all stored data |
+
+Use Memory MCP to:
+- Track project progress across sessions
+- Store discovered patterns and solutions
+- Remember user preferences and requirements
+- Build a knowledge base of the codebase
+
+### Supabase MCP for Database Operations
+
+Supabase MCP provides direct database access for querying and migrations:
+
+| Tool | Purpose |
+|------|---------|
+| `supabase_execute_sql` | Run SQL queries |
+| `supabase_apply_migration` | Apply DDL changes |
+| `supabase_list_tables` | List database tables |
+| `supabase_list_migrations` | View migration history |
+| `supabase_get_logs` | Get service logs |
+| `supabase_get_advisors` | Security/performance checks |
+
+### Filesystem MCP for File Operations
+
+Standard filesystem operations are available:
+- Read/write files
+- Create/delete directories
+- Search for files
+- Get file info
+
+### When to Use Each Tool
+
+| Scenario | Recommended Tool |
+|----------|-----------------|
+| Test user interactions | Playwright MCP |
+| Debug UI rendering | Playwright MCP |
+| Check API responses | Playwright `evaluate` |
+| Store session knowledge | Memory MCP |
+| Query database directly | Supabase MCP |
+| File operations | Filesystem MCP |
+
+### Debugging Workflow
+
+1. **Identify the issue** - What's not working?
+2. **Navigate to affected page** - Use Playwright MCP
+3. **Check console errors** - `playwright_browser_console_messages`
+4. **Check network requests** - `playwright_browser_network_requests`
+5. **Inspect API responses** - `playwright_browser_evaluate`
+6. **Fix the issue** - Edit code files
+7. **Verify the fix** - Refresh and test with Playwright
+8. **Close browser** - Free resources
+
+### Important Notes
+
+- **Always close the browser** after testing with `playwright_browser_close`
+- **Dev server must be running** for Playwright to work (`pnpm dev`)
+- **Use snapshot, not screenshot** for assertions - it's more reliable
+- **Check console errors** after every significant action
+- **Store important discoveries** in Memory MCP for future reference
 
 ## Storage Conventions
 
