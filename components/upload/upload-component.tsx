@@ -328,7 +328,7 @@ export function UploadComponent({
             {mode === 'album' && selectedProjectId && (
               <div className="mt-4 flex gap-2">
                 <Link
-                  href={`/projects/${selectedProjectId}?tab=albums`}
+                  href={`/projects/${encodeURIComponent(selectedProjectId)}?tab=albums`}
                   className="text-sm text-primary hover:underline flex items-center gap-1"
                 >
                   <FolderOpen className="w-4 h-4" />
