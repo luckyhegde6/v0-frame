@@ -1,6 +1,6 @@
 import { auth } from '@/lib/auth/auth'
 import { redirect } from 'next/navigation'
-import { Shield, Users, Settings, Activity, FolderOpen, Play, BookOpen } from 'lucide-react'
+import { Shield, Users, Settings, Activity, FolderOpen, Play, BookOpen, HardDrive } from 'lucide-react'
 import Link from 'next/link'
 
 export default async function AdminPage() {
@@ -104,6 +104,14 @@ export default async function AdminPage() {
             </div>
             <h3 className="text-lg font-semibold mb-2">System</h3>
             <p className="text-muted-foreground">View system health and metrics</p>
+          </Link>
+
+          <Link href="/admin/storage" className="p-6 bg-card border border-border rounded-lg hover:border-primary/50 transition-colors cursor-pointer">
+            <div className="w-12 h-12 rounded-lg bg-cyan-500/10 flex items-center justify-center mb-4">
+              <HardDrive className="w-6 h-6 text-cyan-500" />
+            </div>
+            <h3 className="text-lg font-semibold mb-2">Storage</h3>
+            <p className="text-muted-foreground">Monitor storage usage and files</p>
           </Link>
 
           <Link href="/api/docs/swagger" target="_blank" className="p-6 bg-card border border-border rounded-lg hover:border-primary/50 transition-colors cursor-pointer">

@@ -34,14 +34,13 @@
     "netlify": {
       "type": "local",
       "command": ["npx", "-y", "@netlify/mcp"],
-      "enabled": true,
+      "enabled": false,
       "timeout": 120000
     },
-    "supabase": {
-      "type": "local",
-      "command": ["npx", "-y", "mcp-remote", "https://mcp.supabase.com/mcp?project_ref=viuvufbhcscavvdfoqqn"],
-      "enabled": true,
-      "timeout": 120000
+     "supabase": {
+      "type": "remote",
+      "url": "https://mcp.supabase.com/mcp?project_ref=viuvufbhcscavvdfoqqn",
+      "enabled": true
     },
     "memory": {
       "type": "local",

@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import { useEffect, useState } from 'react'
-import { ChevronRight, Home, Shield, Image, Upload, ArrowLeft, FolderOpen, Play, BookOpen, Settings, Loader2, Layers, Star, Share2, User, FileText, Users } from 'lucide-react'
+import { ChevronRight, Home, Shield, Image, Upload, ArrowLeft, FolderOpen, Play, BookOpen, Settings, Loader2, Layers, Star, Share2, User, FileText, Users, HardDrive } from 'lucide-react'
 import { UserNav } from './user-nav'
 import { NotificationBell } from './notification-bell'
 import { cn } from '@/lib/utils'
@@ -253,6 +253,16 @@ export function Header() {
                   >
                     <FileText className="w-4 h-4" />
                     Audit
+                  </Link>
+                  <Link
+                    href="/admin/storage"
+                    className={cn(
+                      "flex items-center gap-2 text-sm font-medium transition-colors hover:text-primary",
+                      pathname.startsWith('/admin/storage') ? "text-primary" : "text-muted-foreground"
+                    )}
+                  >
+                    <HardDrive className="w-4 h-4" />
+                    Storage
                   </Link>
                 </>
               )}
