@@ -9,11 +9,22 @@ datasource db {
   provider = "postgresql"
 }
 
-// Phase 1, 2 & 3: Image Ingestion, Processing and Ownership
+// Storage Type for Gallery vs Album separation
+enum StorageType {
+  GALLERY    // Personal gallery images (owned by user)
+  ALBUM      // Album-specific images (owned by album context)
+}
+
+// Phase 1, 2, 3 & 4: Image Ingestion, Processing, Ownership and Projects
 model Image {
   id        String      @id @default(cuid())
   status    ImageStatus
   title     String?
+  
+  // Storage type determines ownership context
+  // GALLERY: userId is the owner, image appears in user's gallery
+  // ALBUM: userId is uploader, albumId determines ownership context
+  storageType  StorageType @default(GALLERY)
   
   // Phase 1: Required for ingestion
   tempPath  String      // Absolute path to temp file
@@ -30,6 +41,10 @@ model Image {
   // Phase 3: Ownership & Enriched Metadata
   userId          String
   user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  // Album context (only set when storageType = ALBUM)
+  albumId         String?
+  album           Album?   @relation(fields: [albumId], references: [id], onDelete: Cascade)
   
   // EXIF Enrichment (Phase 3)
   make            String?  // Camera manufacturer
@@ -48,6 +63,8 @@ model Image {
   // Relations
   collections Collection[]
   jobs        Job[]
+  projectImages ProjectImage[]
+  albumImages AlbumImage[]
   
   // Timestamps
   createdAt DateTime    @default(now())
@@ -56,6 +73,8 @@ model Image {
   @@index([status])
   @@index([checksum])
   @@index([userId])
+  @@index([storageType])
+  @@index([albumId])
   @@index([createdAt])
 }
 
@@ -106,13 +125,25 @@ model User {
   email         String?   @unique
   emailVerified DateTime?
   image         String?
-  password      String?   // For Credentials provider
+  password      String?
   role          Role      @default(USER)
   
   accounts      Account[]
   sessions      Session[]
   images        Image[]
   collections   Collection[]
+  projects      Project[]
+  shareTokens   ShareToken[]
+  notifications Notification[]
+  adminTasks    AdminTask[]
+  albums        Album[]
+  projectAccess ProjectAccess[]
+  proProfile    ProProfile?
+  clientProjectAccess    ClientProjectAccess[] @relation("UserRelation")
+  clientAlbumAccess      ClientAlbumAccess[]   @relation("UserRelation")
+  auditLogs               AuditLog[]
+  grantedProjectAccess   ClientProjectAccess[] @relation("GrantedByRelation")
+  grantedAlbumAccess     ClientAlbumAccess[]   @relation("GrantedByAlbumRelation")
 
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
@@ -126,11 +157,512 @@ model VerificationToken {
   @@unique([identifier, token])
 }
 
+// Phase 4: Professional Projects
+model Project {
+  id             String   @id @default(cuid())
+  name           String
+  description    String?
+  
+  // Event/Project details
+  eventName      String?
+  startDate      DateTime?
+  branding       Boolean  @default(false)
+  watermarkImage String?
+  coverImage     String?
+  
+  // Storage management (in bytes)
+  quotaBytes     BigInt   @default(10737418240) // 10GB default
+  storageUsed    BigInt   @default(0)
+  
+  // Ownership
+  ownerId        String
+  owner          User     @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  
+  // Relations
+  images         ProjectImage[]
+  shareTokens    ShareToken[]
+  accessList     ProjectAccess[]
+  clientAccess   ClientProjectAccess[]
+  albums        Album[]
+  
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@unique([name, ownerId])
+  @@index([ownerId])
+}
+
+// Project Access Control
+enum AccessLevel {
+  READ
+  WRITE
+  FULL
+}
+
+// Client Project Access
+model ClientProjectAccess {
+  id          String        @id @default(cuid())
+  projectId   String
+  project     Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User          @relation("UserRelation", fields: [userId], references: [id], onDelete: Cascade)
+  accessLevel AccessLevel   @default(READ)
+  
+  grantedById String
+  grantedBy   User          @relation("GrantedByRelation", fields: [grantedById], references: [id], onDelete: Cascade)
+  
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  @@unique([projectId, userId])
+  @@index([projectId])
+  @@index([userId])
+}
+
+model ProjectAccess {
+  id        String     @id @default(cuid())
+  projectId String
+  project   Project    @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessLevel AccessLevel @default(READ)
+  
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  @@unique([projectId, userId])
+  @@index([projectId])
+  @@index([userId])
+}
+
+// Album Model for organizing media
+enum AlbumCategory {
+  PHOTO_ALBUM
+  COVER_PAGE
+  SHORT_VIDEOS
+  REELS
+  SHORTS
+}
+
+model Album {
+  id          String       @id @default(cuid())
+  name        String
+  description String?
+  category    AlbumCategory @default(PHOTO_ALBUM)
+  
+  // Ownership
+  ownerId     String
+  owner       User         @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  
+  // Project relation
+  projectId   String?
+  project     Project?     @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  
+  // Relations - images now directly owned by album (storageType = ALBUM)
+  images      Image[]      // Direct images with storageType = ALBUM
+  albumImages AlbumImage[] // Legacy junction table for backwards compatibility
+  settings    AlbumSettings?
+  clientAccess ClientAlbumAccess[]
+  
+  coverImage  String?
+  
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  @@unique([name, ownerId])
+  @@index([ownerId])
+  @@index([projectId])
+}
+
+// Album-Image many-to-many relationship
+model AlbumImage {
+  id        String   @id @default(cuid())
+  albumId   String
+  album     Album    @relation(fields: [albumId], references: [id], onDelete: Cascade)
+  imageId   String
+  image     Image    @relation(fields: [imageId], references: [id], onDelete: Cascade)
+  
+  addedAt   DateTime @default(now())
+
+  @@unique([albumId, imageId])
+  @@index([albumId])
+  @@index([imageId])
+}
+
+// Quality Enums
+enum ImageQuality {
+  LOW     // 1920px
+  MEDIUM  // 2560px
+  HIGH    // 4000px
+  ORIGINAL
+}
+
+enum VideoQuality {
+  LOW     // 720p
+  MEDIUM  // 1080p
+  HIGH    // 4K
+}
+
+enum ShortQuality {
+  LOW     // 720p
+  MEDIUM  // 1080p
+  HIGH    // 1440p
+}
+
+enum WatermarkPosition {
+  TOP_LEFT
+  TOP_RIGHT
+  BOTTOM_LEFT
+  BOTTOM_RIGHT
+  CENTER
+}
+
+enum FaceRecStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+  DISABLED
+}
+
+// Album Settings
+model AlbumSettings {
+  id              String           @id @default(cuid())
+  albumId         String           @unique
+  album           Album            @relation(fields: [albumId], references: [id], onDelete: Cascade)
+  
+  // Upload preferences
+  imageQuality    ImageQuality     @default(HIGH)
+  videoQuality   VideoQuality     @default(HIGH)
+  shortQuality   ShortQuality     @default(HIGH)
+  
+  // Resolution settings
+  maxImageWidth  Int              @default(4000)
+  maxImageHeight Int              @default(4000)
+  
+  // Watermark
+  watermarkEnabled Boolean         @default(false)
+  watermarkImage  String?
+  watermarkOpacity Float          @default(0.5)
+  watermarkPosition WatermarkPosition @default(BOTTOM_RIGHT)
+  
+  // Features
+  faceRecognitionEnabled Boolean   @default(false)
+  faceRecognitionStatus FaceRecStatus @default(PENDING)
+  
+  // Download
+  downloadEnabled  Boolean         @default(true)
+  bulkDownloadEnabled Boolean     @default(true)
+  
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+}
+
+// Project-Image many-to-many relationship
+model ProjectImage {
+  id        String   @id @default(cuid())
+  projectId String
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  imageId   String
+  image     Image    @relation(fields: [imageId], references: [id], onDelete: Cascade)
+  
+  addedAt   DateTime @default(now())
+
+  @@unique([projectId, imageId])
+  @@index([projectId])
+  @@index([imageId])
+}
+
+// Client Album Access
+model ClientAlbumAccess {
+  id          String        @id @default(cuid())
+  albumId     String
+  album       Album         @relation(fields: [albumId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User          @relation("UserRelation", fields: [userId], references: [id], onDelete: Cascade)
+  accessLevel AccessLevel   @default(READ)
+  
+  grantedById String
+  grantedBy   User          @relation("GrantedByAlbumRelation", fields: [grantedById], references: [id], onDelete: Cascade)
+  
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  @@unique([albumId, userId])
+  @@index([albumId])
+  @@index([userId])
+}
+
+// PRO Profile
+model ProProfile {
+  id              String   @id @default(cuid())
+  userId          String   @unique
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  businessName    String?
+  logo            String?
+  location        String?
+  phone           String?
+  email           String?
+  website         String?
+  bio             String?
+  facebook        String?
+  instagram       String?
+  twitter         String?
+  linkedin        String?
+  portfolioUrl    String?
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+// Audit Action Enum
+enum AuditAction {
+  // ============================================
+  // USER ACTIONS
+  // ============================================
+  USER_CREATED              // Admin created a new user
+  USER_UPDATED              // User profile updated
+  USER_DELETED              // User account deleted
+  USER_ROLE_CHANGED         // User role changed (USER, CLIENT, PRO, ADMIN, SUPERADMIN)
+  USER_LOGIN               // User logged in
+  USER_LOGOUT              // User logged out
+  USER_PASSWORD_CHANGED    // User changed password
+  
+  // ============================================
+  // PROJECT ACTIONS  
+  // ============================================
+  PROJECT_CREATED           // New project created
+  PROJECT_UPDATED           // Project details updated
+  PROJECT_DELETED           // Project deleted
+  
+  // ============================================
+  // ALBUM ACTIONS
+  // ============================================
+  ALBUM_CREATED            // New album created
+  ALBUM_UPDATED            // Album details updated
+  ALBUM_DELETED            // Album deleted
+  ALBUM_IMAGE_ADDED       // Images added to album
+  ALBUM_IMAGE_REMOVED     // Images removed from album
+  
+  // ============================================
+  // IMAGE ACTIONS
+  // ============================================
+  IMAGE_UPLOADED           // New image uploaded
+  IMAGE_DELETED            // Image deleted
+  IMAGE_MOVED              // Image moved between locations
+  IMAGE_COPIED             // Image copied to another location
+  IMAGE_CLONED             // Image cloned (admin feature)
+  
+  // ============================================
+  // JOB ACTIONS
+  // ============================================
+  JOB_CREATED              // Background job created
+  JOB_STARTED              // Job started processing
+  JOB_COMPLETED            // Job completed successfully
+  JOB_FAILED              // Job failed
+  
+  // ============================================
+  // CLIENT ACCESS ACTIONS
+  // ============================================
+  CLIENT_ACCESS_GRANTED    // Client access to project/album granted
+  CLIENT_ACCESS_REVOKED    // Client access revoked
+  CLIENT_ACCESS_MODIFIED   // Client access level changed
+  
+  // ============================================
+  // SHARE LINK ACTIONS
+  // ============================================
+  SHARE_LINK_CREATED       // Share link generated
+  SHARE_LINK_REVOKED       // Share link revoked/disabled
+  SHARE_LINK_ACCESSED      // Share link accessed
+  SHARE_LINK_REQUESTED     // Share link requested
+  
+  // ============================================
+  // SETTINGS ACTIONS
+  // ============================================
+  SETTINGS_CHANGED         // System or user settings changed
+  ALBUM_SETTINGS_CHANGED  // Album-specific settings changed
+  
+  // ============================================
+  // STORAGE ACTIONS
+  // ============================================
+  STORAGE_QUOTA_CHANGED    // Storage quota updated
+  STORAGE_WARNING          // Storage usage warning
+  
+  // ============================================
+  // ADMIN ACTIONS
+  // ============================================
+  SYSTEM_CONFIG_CHANGED    // System configuration changed
+  BULK_OPERATION           // Bulk operation performed (admin)
+}
+
+// Audit Log
+model AuditLog {
+  id          String      @id @default(cuid())
+  action      AuditAction
+  entityType  String
+  entityId    String?
+  
+  // Changes
+  oldValue    Json?
+  newValue    Json?
+  
+  // Metadata
+  metadata    Json?
+  
+  // User info
+  userId      String?
+  user        User?       @relation(fields: [userId], references: [id], onDelete: SetNull)
+  userEmail   String?
+  userName    String?
+  userRole    Role?
+  
+  // Request info
+  ipAddress   String?
+  userAgent   String?
+  description String?
+  
+  createdAt   DateTime    @default(now())
+
+  @@index([action])
+  @@index([entityType, entityId])
+  @@index([userId])
+  @@index([createdAt])
+}
+
+// Phase 4: Client Sharing
+model ShareToken {
+  id          String    @id @default(cuid())
+  token       String    @unique
+  projectId   String
+  project     Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  
+  // Token configuration
+  expiresAt   DateTime?
+  maxAccesses Int?
+  accessCount Int       @default(0)
+  
+  // Metadata
+  createdAt   DateTime  @default(now())
+  createdById String
+  createdBy   User      @relation(fields: [createdById], references: [id], onDelete: Cascade)
+  
+  @@index([projectId])
+  @@index([token])
+}
+
 enum Role {
   USER
   PRO
   CLIENT
   ADMIN
+  SUPERADMIN
+}
+
+// Notifications for admin
+model Notification {
+  id        String           @id @default(cuid())
+  type      NotificationType
+  title     String
+  message   String
+  status    NotificationStatus @default(UNREAD)
+  read      Boolean          @default(false)
+  requestor String?          // Who/what triggered the notification
+  userId    String?
+  user      User?            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  metadata  Json?
+  
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+  
+  @@index([userId])
+  @@index([read])
+  @@index([status])
+  @@index([createdAt])
+}
+
+enum NotificationStatus {
+  UNREAD
+  READ
+  SNOOZED
+}
+
+// Admin Task Management
+model AdminTask {
+  id          String      @id @default(cuid())
+  type        TaskType
+  status      TaskStatus  @default(PENDING)
+  priority    TaskPriority @default(MEDIUM)
+  progress    Int         @default(0)
+  
+  // Task details
+  title       String
+  description String?
+  payload     Json?
+  result      Json?
+  error       String?
+  
+  // Scheduling
+  scheduledAt DateTime?
+  startedAt   DateTime?
+  completedAt DateTime?
+  
+  // Metadata
+  createdById String?
+  createdBy   User?       @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  
+  @@index([type])
+  @@index([status])
+  @@index([priority])
+  @@index([scheduledAt])
+}
+
+enum TaskType {
+  // Image operations
+  COMPRESS_IMAGES
+  EXTRACT_ARCHIVE
+  OFFLINE_UPLOAD
+  SYNC_STORAGE
+  GENERATE_THUMBNAILS
+  REGENERATE_METADATA
+  
+  // System operations  
+  BACKUP_DATABASE
+  CLEANUP_TEMP
+  OPTIMIZE_STORAGE
+  SYNC_USERS
+  
+  // Share operations
+  SHARE_REQUEST
+  FACE_RECOGNITION
+}
+
+enum TaskStatus {
+  PENDING
+  QUEUED
+  RUNNING
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+enum TaskPriority {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum NotificationType {
+  JOB_ERROR
+  JOB_COMPLETE
+  SHARE_REQUEST
+  USER_REGISTERED
+  QUOTA_EXCEEDED
+  SYSTEM_ERROR
+  ACCESS_REQUEST
 }
 
 // Phase 1 & 2: Image Lifecycle States

@@ -147,6 +147,11 @@ Status: ✅ COMPLETE
   - [x] Back button navigation
   - [x] Dynamic landing page (Sign In vs Logout)
   - [x] Admin dashboard with stats
+- [x] **Error Handling**: Non-blocking toast notifications
+  - [x] Error handler utility with severity levels
+  - [x] Toast notifications for user feedback
+  - [x] Console logging for critical errors
+  - [x] Error log management
 
 ### Demo Accounts
 - admin@frame.app / admin123 (ADMIN)
@@ -157,17 +162,71 @@ Status: ✅ COMPLETE
 ---
 
 ## PHASE 4 — Professional Projects
-Status: ⏳ PENDING
+Status: ⏳ IN PROGRESS
 
 ### Goals
 - Enable organizational groupings (Projects) for professional photography workflows.
 - Implement secure, time-limited sharing mechanisms for clients.
 - Provide storage management and quota enforcement.
+- PRO profile management with business details.
+- Album settings and configuration.
+- Comprehensive audit logging for admin/superadmin.
 
 ### Tasks
-- [ ] **Namespacing**: Logical project groupings for images
-- [ ] **Sharing**: Secure client sharing links with expiry
-- [ ] **Quotas**: Per-user/project storage management
+- [ ] **Database Schema**
+  - [x] Project model with quota management
+  - [x] ProjectImage join table
+  - [x] ShareToken model for client sharing
+  - [ ] ProProfile model for business profile
+  - [ ] AuditLog model for comprehensive logging
+  - [ ] AlbumSettings model for album configuration
+  - [ ] ClientProjectAccess model for linked clients
+- [ ] **PRO Profile**
+  - [ ] Create profile page (/profile) for PRO users
+  - [ ] Fields: name, business logo, location, contact details, social media links, previous works link
+  - [ ] Edit profile functionality
+  - [ ] Profile visibility settings
+- [ ] **Project Management**
+  - [ ] Create/Update/Delete projects
+  - [ ] List user projects with pagination
+  - [ ] Event/Project name, start date, branding/watermark toggle
+  - [ ] Cover image for project
+  - [ ] Linked clients table in project
+- [ ] **Project Images**
+  - [ ] Add/remove images from projects
+  - [ ] Project-scoped image queries
+- [ ] **Sharing & QR Codes**
+  - [ ] Generate share tokens
+  - [ ] Share token expiry and access limits
+  - [ ] Public share view page
+  - [ ] QR code generation for share links
+  - [ ] Add service popup for generating links (after project creation)
+- [ ] **Album Settings**
+  - [ ] Album settings page/modal (PRO/ADMIN/SUPERADMIN only)
+  - [ ] Preferred upload size for images/videos/shorts (quality-based)
+  - [ ] Image resolution settings
+  - [ ] Watermark configuration (add/edit)
+  - [ ] Face recognition toggle (creates admin request job)
+  - [ ] Enable/Disable download album toggle
+  - [ ] Delete album access control
+- [ ] **Audit & Logging**
+  - [ ] AuditLog table for tracking:
+    - Storage usage changes
+    - Project create/edit/delete events
+    - Share link generation/revocation
+    - Job event generation
+    - User create/edit/delete actions
+  - [ ] Audit page for ADMIN/SUPERADMIN only
+  - [ ] Filter audit logs by type, date, user
+- [ ] **Client Access Management**
+  - [ ] Project-Client access table
+  - [ ] Album access table
+  - [ ] PRO can grant Read access to clients from Users list
+  - [ ] Permission inheritance from project to album
+- [ ] **Quotas**
+  - [ ] Storage usage tracking
+  - [ ] Quota enforcement on upload
+  - [ ] Quota display in UI
 
 ---
 

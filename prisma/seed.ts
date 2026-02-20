@@ -1,39 +1,27 @@
 import bcrypt from 'bcryptjs'
 import prisma from '../lib/prisma'
-import { Role } from '@prisma/client'
 
 async function main() {
-  console.log('Seeding database for Phase 3 Authentication...')
+  console.log('Seeding database for FRAME...')
 
-  // Create demo users for Phase 3 testing
-  const users = [
-    {
-      email: 'admin@frame.app',
-      name: 'Admin User',
-      password: 'admin123',
-      role: Role.ADMIN,
-    },
-    {
-      email: 'user@frame.app',
-      name: 'Regular User',
-      password: 'user123',
-      role: Role.USER,
-    },
-    {
-      email: 'pro@frame.app',
-      name: 'Pro User',
-      password: 'pro123',
-      role: Role.PRO,
-    },
-    {
-      email: 'client@frame.app',
-      name: 'Client User',
-      password: 'client123',
-      role: Role.CLIENT,
-    },
+  const adminEmail = process.env.ADMIN_EMAIL || 'admin@frame.app'
+  const adminPassword = process.env.ADMIN_PASSWORD || 'admin123'
+  
+  const demoUsers = [
+    { email: adminEmail, name: 'Super Admin', password: adminPassword, role: 'SUPERADMIN' },
+    { email: 'admin2@frame.app', name: 'Admin User', password: 'admin123', role: 'ADMIN' },
+    { email: 'user@frame.app', name: 'Regular User', password: 'user123', role: 'USER' },
+    { email: 'user2@frame.app', name: 'User Two', password: 'user123', role: 'USER' },
+    { email: 'user3@frame.app', name: 'User Three', password: 'user123', role: 'USER' },
+    { email: 'pro@frame.app', name: 'Pro User', password: 'pro123', role: 'PRO' },
+    { email: 'pro2@frame.app', name: 'Pro User Two', password: 'pro123', role: 'PRO' },
+    { email: 'pro3@frame.app', name: 'Pro User Three', password: 'pro123', role: 'PRO' },
+    { email: 'client@frame.app', name: 'Client User', password: 'client123', role: 'CLIENT' },
+    { email: 'client2@frame.app', name: 'Client Two', password: 'client123', role: 'CLIENT' },
+    { email: 'client3@frame.app', name: 'Client Three', password: 'client123', role: 'CLIENT' },
   ]
 
-  for (const userData of users) {
+  for (const userData of demoUsers) {
     const existingUser = await prisma.user.findUnique({
       where: { email: userData.email },
     })
@@ -46,7 +34,7 @@ async function main() {
           email: userData.email,
           name: userData.name,
           password: hashedPassword,
-          role: userData.role,
+          role: userData.role as 'USER' | 'PRO' | 'CLIENT' | 'ADMIN' | 'SUPERADMIN',
         },
       })
       
@@ -56,7 +44,12 @@ async function main() {
     }
   }
 
-  console.log('Seeding finished.')
+  console.log('\n=== Demo Credentials ===')
+  console.log('SUPERADMIN: admin@frame.app / admin123')
+  console.log('ADMIN: admin2@frame.app / admin123')
+  console.log('USER: user@frame.app / user123, user2@frame.app / user123, user3@frame.app / user123')
+  console.log('PRO: pro@frame.app / pro123, pro2@frame.app / pro123, pro3@frame.app / pro123')
+  console.log('CLIENT: client@frame.app / client123, client2@frame.app / client123, client3@frame.app / client123')
 }
 
 main()

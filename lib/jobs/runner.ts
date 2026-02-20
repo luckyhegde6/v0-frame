@@ -3,6 +3,7 @@
 
 import prisma from '@/lib/prisma';
 import { JobStatus } from '@prisma/client';
+import { logJobStarted, logJobCompleted, logJobFailed } from '@/lib/audit';
 
 const LOCK_TIMEOUT_MS = 30000; // 30 second lock timeout
 const WORKER_ID = `worker-${process.pid}-${Date.now()}`;
@@ -54,7 +55,7 @@ async function tryLockJob(jobId: string): Promise<boolean> {
 /**
  * Release lock and mark job as completed
  */
-async function completeJob(jobId: string) {
+async function completeJob(jobId: string, userId?: string) {
   await prisma.job.update({
     where: { id: jobId },
     data: {
@@ -63,6 +64,8 @@ async function completeJob(jobId: string) {
       lockedBy: null
     }
   });
+
+  await logJobCompleted(jobId, userId || 'system');
 }
 
 /**
@@ -95,6 +98,8 @@ async function processJob(jobId: string): Promise<void> {
     return;
   }
 
+  await logJobStarted(jobId, 'system');
+
   try {
     // 2. Fetch job details
     const job = await prisma.job.findUnique({ where: { id: jobId } });
@@ -125,6 +130,7 @@ async function processJob(jobId: string): Promise<void> {
     const job = await prisma.job.findUnique({ where: { id: jobId } });
     if (job) {
       await failJob(jobId, errorMessage, job);
+      await logJobFailed(jobId, 'system', errorMessage);
     }
   }
 }

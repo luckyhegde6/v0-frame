@@ -1,0 +1,171 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "mcp": {
+    "git": {
+      "type": "local",
+      "command": ["uvx", "mcp-server-git"],
+      "enabled": false,
+      "timeout": 60000
+    },
+    "MCP_DOCKER": {
+      "type": "local",
+      "command": ["docker", "mcp", "gateway", "run"],
+      "enabled": true,
+      "timeout": 60000
+    },
+    "github": {
+      "type": "remote",
+      "url": "https://api.githubcopilot.com/mcp/",
+      "enabled": false,
+      "timeout": 60000
+    },
+    "markitdown": {
+      "type": "local",
+      "command": ["uvx", "markitdown-mcp"],
+      "enabled": false,
+      "timeout": 60000
+    },
+    "playwright": {
+      "type": "local",
+      "command": ["npx", "-y", "@playwright/mcp@latest"],
+      "enabled": true,
+      "timeout": 120000
+    },
+    "netlify": {
+      "type": "local",
+      "command": ["npx", "-y", "@netlify/mcp"],
+      "enabled": true,
+      "timeout": 120000
+    },
+    "supabase": {
+      "type": "local",
+      "command": ["npx", "-y", "mcp-remote", "https://mcp.supabase.com/mcp?project_ref=viuvufbhcscavvdfoqqn"],
+      "enabled": true,
+      "timeout": 120000
+    },
+    "memory": {
+      "type": "local",
+      "command": ["npx", "-y", "@modelcontextprotocol/server-memory@latest"],
+      "environment": {
+        "MEMORY_FILE_PATH": "{env:MEMORY_FILE_PATH}"
+      },
+      "enabled": true,
+      "timeout": 120000
+    },
+    "sequential-thinking": {
+      "type": "local",
+      "command": ["npx", "-y", "@modelcontextprotocol/server-sequential-thinking"],
+      "enabled": true,
+      "timeout": 120000
+    },
+    "context7": {
+      "type": "remote",
+      "url": "https://mcp.context7.com/mcp",
+      "timeout": 60000
+    },
+    "gh_grep": {
+      "type": "remote",
+      "url": "https://mcp.grep.app",
+      "timeout": 60000
+    },
+    "sentry": {
+      "type": "remote",
+      "url": "https://mcp.sentry.dev/mcp",
+      "enabled": false,
+      "timeout": 60000
+    },
+    "brave-search": {
+      "type": "local",
+      "command": ["npx", "-y", "@modelcontextprotocol/server-brave-search"],
+      "environment": {
+        "BRAVE_API_KEY": "{env:BRAVE_API_KEY}"
+      },
+      "enabled": false,
+      "timeout": 120000
+    },
+    "filesystem": {
+      "type": "local",
+      "command": ["npx", "-y", "@modelcontextprotocol/server-filesystem", "."],
+      "enabled": true,
+      "timeout": 120000
+    },
+    "postgresql": {
+      "type": "local",
+      "command": ["npx", "-y", "@modelcontextprotocol/server-postgres"],
+      "environment": {
+        "DATABASE_URL": "{env:DATABASE_URL}"
+      },
+      "enabled": false,
+      "timeout": 120000
+    },
+    "slack": {
+      "type": "local",
+      "command": ["npx", "-y", "@modelcontextprotocol/server-slack"],
+      "environment": {
+        "SLACK_BOT_TOKEN": "{env:SLACK_BOT_TOKEN}",
+        "SLACK_TEAM_ID": "{env:SLACK_TEAM_ID}"
+      },
+      "enabled": false,
+      "timeout": 120000
+    }
+  },
+  "lsp": {
+    "typescript": {
+      "enabled": true,
+      "command": ["npx", "typescript-language-server", "--stdio"],
+      "selector": ["**/*.ts", "**/*.tsx"],
+      "initializationOptions": {
+        "preferences": {
+          "disableSuggestions": false
+        },
+        "typescript": {
+          "tsdk": "node_modules/typescript/lib"
+        }
+      }
+    }
+  },
+  "permission": {
+    "skill": {
+      "*": "allow",
+      "pr-review": "allow",
+      "internal-*": "deny",
+      "experimental-*": "ask"
+    }
+  },
+  "agent": {
+    "plan": {
+      "permission": {
+        "skill": {
+          "internal-*": "allow"
+        }
+      }
+    },
+    "create": {
+      "skills": [
+        ".ai/skills/coding-standards/typescript.md",
+        ".ai/skills/coding-standards/react-nextjs.md",
+        ".ai/skills/domain-knowledge/async-patterns.md",
+        ".ai/skills/domain-knowledge/image-lifecycle.md"
+      ]
+    },
+    "debug": {
+      "skills": [
+        ".ai/skills/domain-knowledge/async-patterns.md",
+        ".ai/skills/domain-knowledge/image-lifecycle.md"
+      ]
+    },
+    "test-engineer": {
+      "skills": [
+        ".ai/skills/coding-standards/typescript.md",
+        ".ai/contexts/testing.md"
+      ]
+    },
+    "refactor": {
+      "skills": [
+        ".ai/skills/coding-standards/typescript.md",
+        ".ai/skills/coding-standards/react-nextjs.md"
+      ]
+    }
+  },
+  "plugin": ["opencode-helicone-session", "opencode-wakatime"]
+}

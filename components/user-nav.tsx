@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { signOut, useSession } from 'next-auth/react'
-import { User, LogOut, Settings, Shield } from 'lucide-react'
+import { User, LogOut, Settings, Shield, FolderOpen, Play, BookOpen } from 'lucide-react'
 import Link from 'next/link'
 
 export function UserNav() {
@@ -12,7 +12,8 @@ export function UserNav() {
   if (!session?.user) return null
 
   const user = session.user
-  const isAdmin = user.role === 'ADMIN'
+  const isAdmin = user.role === 'ADMIN' || user.role === 'SUPERADMIN'
+  const isClientOrAbove = ['CLIENT', 'PRO', 'ADMIN', 'SUPERADMIN'].includes(user.role)
 
   return (
     <div className="relative">
@@ -35,7 +36,7 @@ export function UserNav() {
             className="fixed inset-0 z-40"
             onClick={() => setIsOpen(false)}
           />
-          <div className="absolute right-0 mt-2 w-56 rounded-lg border border-border bg-card shadow-lg z-50 py-2">
+          <div className="absolute right-0 mt-2 w-64 rounded-lg border border-border bg-card shadow-lg z-50 py-2">
             <div className="px-4 py-2 border-b border-border">
               <p className="text-sm font-medium">{user.name}</p>
               <p className="text-xs text-muted-foreground">{user.email}</p>
@@ -60,6 +61,17 @@ export function UserNav() {
                 Upload
               </Link>
 
+              {isClientOrAbove && (
+                <Link
+                  href="/projects"
+                  className="flex items-center gap-2 px-4 py-2 text-sm hover:bg-muted transition-colors"
+                  onClick={() => setIsOpen(false)}
+                >
+                  <FolderOpen className="w-4 h-4" />
+                  Projects
+                </Link>
+              )}
+
               {isAdmin && (
                 <Link
                   href="/admin"
@@ -71,6 +83,33 @@ export function UserNav() {
                 </Link>
               )}
             </div>
+
+            {isAdmin && (
+              <>
+                <div className="border-t border-border pt-1 mt-1 px-4 py-1">
+                  <p className="text-xs text-muted-foreground uppercase">Admin</p>
+                </div>
+                <div className="py-1">
+                  <Link
+                    href="/admin/tasks"
+                    className="flex items-center gap-2 px-4 py-2 text-sm hover:bg-muted transition-colors"
+                    onClick={() => setIsOpen(false)}
+                  >
+                    <Play className="w-4 h-4" />
+                    Tasks
+                  </Link>
+                  <Link
+                    href="/api/docs/swagger"
+                    target="_blank"
+                    className="flex items-center gap-2 px-4 py-2 text-sm hover:bg-muted transition-colors"
+                    onClick={() => setIsOpen(false)}
+                  >
+                    <BookOpen className="w-4 h-4" />
+                    API Docs
+                  </Link>
+                </div>
+              </>
+            )}
 
             <div className="border-t border-border pt-1 mt-1">
               <button

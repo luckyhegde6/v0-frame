@@ -2,6 +2,7 @@
 // See: .ai/contracts/phase-1-ingestion.md §6 & .ai/contracts/phase-2-processing.md
 
 import prisma from '@/lib/prisma';
+import { logJobCreated } from '@/lib/audit';
 
 export interface OffloadJob {
     type: 'OFFLOAD_ORIGINAL';
@@ -40,7 +41,7 @@ export async function enqueueOffloadJob(job: OffloadJob): Promise<void> {
         imageId: job.imageId
     });
 
-    await prisma.job.create({
+    const createdJob = await prisma.job.create({
         data: {
             type: job.type,
             payload: JSON.stringify(job),
@@ -49,6 +50,8 @@ export async function enqueueOffloadJob(job: OffloadJob): Promise<void> {
             maxAttempts: 3
         }
     });
+
+    await logJobCreated(createdJob.id, 'system', job.type);
 }
 
 /**
@@ -57,7 +60,7 @@ export async function enqueueOffloadJob(job: OffloadJob): Promise<void> {
 export async function enqueueThumbnailJob(imageId: string, originalPath: string): Promise<void> {
     console.log('[Job Enqueue] Queueing thumbnail job:', { imageId });
 
-    await prisma.job.create({
+    const createdJob = await prisma.job.create({
         data: {
             type: 'THUMBNAIL_GENERATION',
             payload: JSON.stringify({
@@ -71,6 +74,8 @@ export async function enqueueThumbnailJob(imageId: string, originalPath: string)
             maxAttempts: 3
         }
     });
+
+    await logJobCreated(createdJob.id, 'system', 'THUMBNAIL_GENERATION');
 }
 
 /**
@@ -79,7 +84,7 @@ export async function enqueueThumbnailJob(imageId: string, originalPath: string)
 export async function enqueuePreviewJob(imageId: string, originalPath: string): Promise<void> {
     console.log('[Job Enqueue] Queueing preview job:', { imageId });
 
-    await prisma.job.create({
+    const createdJob = await prisma.job.create({
         data: {
             type: 'PREVIEW_GENERATION',
             payload: JSON.stringify({
@@ -92,6 +97,8 @@ export async function enqueuePreviewJob(imageId: string, originalPath: string): 
             maxAttempts: 3
         }
     });
+
+    await logJobCreated(createdJob.id, 'system', 'PREVIEW_GENERATION');
 }
 
 /**
@@ -100,7 +107,7 @@ export async function enqueuePreviewJob(imageId: string, originalPath: string): 
 export async function enqueueExifJob(imageId: string, originalPath: string): Promise<void> {
     console.log('[Job Enqueue] Queueing EXIF job:', { imageId });
 
-    await prisma.job.create({
+    const createdJob = await prisma.job.create({
         data: {
             type: 'EXIF_ENRICHMENT',
             payload: JSON.stringify({
@@ -113,4 +120,6 @@ export async function enqueueExifJob(imageId: string, originalPath: string): Pro
             maxAttempts: 3
         }
     });
+
+    await logJobCreated(createdJob.id, 'system', 'EXIF_ENRICHMENT');
 }

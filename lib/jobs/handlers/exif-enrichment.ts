@@ -6,6 +6,29 @@ import sharp from 'sharp';
 import exifReader from 'exif-reader';
 import prisma from '@/lib/prisma';
 
+interface ExifData {
+    gps?: {
+        GPSLatitude?: number[];
+        GPSLatitudeRef?: string;
+        GPSLongitude?: number[];
+        GPSLongitudeRef?: string;
+        GPSAltitude?: number;
+    };
+    image?: {
+        Make?: string;
+        Model?: string;
+        Software?: string;
+    };
+    exif?: {
+        ExposureTime?: number;
+        FNumber?: number;
+        ISO?: number;
+        FocalLength?: number;
+        LensModel?: string;
+        DateTimeOriginal?: Date;
+    };
+}
+
 /**
  * Extract EXIF metadata and update image record
  */
@@ -25,7 +48,7 @@ export async function handleExifEnrichment(payload: any, jobId: string): Promise
         }
 
         // 2. Parse EXIF data
-        const exif = exifReader(metadata.exif);
+        const exif = exifReader(metadata.exif) as ExifData;
 
         // GPS Conversion (DMS to Decimal)
         const getDecimal = (dms: any) => {

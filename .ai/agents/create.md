@@ -9,6 +9,11 @@ tools:
   - grep_search
   - view_code_item
   - replace_file_content
+skills:
+  - .ai/skills/coding-standards/typescript.md
+  - .ai/skills/coding-standards/react-nextjs.md
+  - .ai/skills/domain-knowledge/async-patterns.md
+  - .ai/skills/domain-knowledge/image-lifecycle.md
 constraints:
   - Follow the existing image lifecycle model strictly
   - Do not introduce new infrastructure without justification

@@ -9,8 +9,11 @@ interface ImageCardProps {
   title: string
   uploaded: string
   isSyncing?: boolean
-  onClick: () => void
+  onClick?: () => void
   onDelete?: () => void
+  size?: string
+  dimensions?: string
+  mimeType?: string
 }
 
 export function ImageCard({ id, src, title, uploaded, isSyncing, onClick, onDelete }: ImageCardProps) {

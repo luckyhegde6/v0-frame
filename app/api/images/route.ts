@@ -1,11 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { auth } from '@/lib/auth/auth'
 import prisma from '@/lib/prisma'
 
 export async function GET(request: NextRequest) {
   try {
-    // Phase 2: Include all image statuses, not just INGESTED
+    const session = await auth()
+    
+    // Gallery is private - users can only see their own images unless ADMIN/SUPERADMIN
+    const userRole = session?.user?.role
+    const isAdmin = userRole === 'ADMIN' || userRole === 'SUPERADMIN'
+    
+    // Gallery API only returns GALLERY type images (personal gallery)
+    // ALBUM type images are accessed via /api/albums/{id}/images
     const [images, collections, jobsByImageId] = await Promise.all([
       prisma.image.findMany({
+        where: isAdmin 
+          ? { storageType: 'GALLERY' } 
+          : { userId: session?.user?.id, storageType: 'GALLERY' },
         orderBy: {
           createdAt: 'desc',
         },
@@ -18,6 +29,7 @@ export async function GET(request: NextRequest) {
         }
       }),
       prisma.collection.findMany({
+        where: isAdmin ? {} : { userId: session?.user?.id },
         include: {
           _count: {
             select: { images: true }

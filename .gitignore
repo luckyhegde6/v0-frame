@@ -26,3 +26,11 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+nul
+
+#for storage of temporary files
+tmp
+storage
+public/storage
+public/tmp

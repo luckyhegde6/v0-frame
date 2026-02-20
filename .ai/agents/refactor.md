@@ -9,6 +9,9 @@ tools:
   - view_code_item
   - replace_file_content
   - multi_replace_file_content
+skills:
+  - .ai/skills/coding-standards/typescript.md
+  - .ai/skills/coding-standards/react-nextjs.md
 constraints:
   - No feature additions
   - No logic changes unless explicitly required
