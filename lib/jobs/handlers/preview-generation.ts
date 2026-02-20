@@ -1,80 +1,102 @@
-// Phase 2: Preview Generation Handler
-// Generates web-optimized preview image using Sharp
+import fs from 'fs/promises'
+import path from 'path'
+import os from 'os'
+import sharp from 'sharp'
+import prisma from '@/lib/prisma'
+import { 
+  storeBuffer, 
+  retrieveFile, 
+  USE_SUPABASE_STORAGE, 
+  BUCKETS 
+} from '@/lib/storage'
 
-import fs from 'fs/promises';
-import path from 'path';
-import sharp from 'sharp';
-import prisma from '@/lib/prisma';
-
-const STORAGE_DIR = process.env.STORAGE_DIR || '/tmp/storage';
-
-/**
- * Generate web-optimized preview image
- * Maximum 2000px, JPEG quality 85, progressive
- * Safe to regenerate - overwrites existing preview
- */
 export async function handlePreviewGeneration(payload: any, jobId: string): Promise<void> {
-  const { imageId, originalPath } = payload;
+  const { imageId, originalPath } = payload
 
-  console.log(`[Preview Handler] Generating preview for: ${imageId}`);
+  console.log(`[Preview Handler] Generating preview for: ${imageId}`)
+  console.log(`[Preview Handler] Using Supabase Storage: ${USE_SUPABASE_STORAGE}`)
 
-  // 1. Validate original file exists
-  try {
-    await fs.access(originalPath);
-  } catch {
-    throw new Error(`Original image not found at: ${originalPath}`);
+  let localPath = originalPath
+
+  if (USE_SUPABASE_STORAGE && originalPath.includes('/')) {
+    const [bucket, ...pathParts] = originalPath.split('/')
+    const storagePath = pathParts.join('/')
+    
+    console.log(`[Preview Handler] Downloading from Supabase: ${bucket}/${storagePath}`)
+    
+    try {
+      localPath = await retrieveFile({
+        bucket: bucket as any,
+        path: storagePath,
+      })
+      console.log(`[Preview Handler] Downloaded to: ${localPath}`)
+    } catch (error) {
+      console.error(`[Preview Handler] Failed to download:`, error)
+      throw error
+    }
   }
 
-  // 2. Ensure preview directory exists
-  const previewDir = path.join(STORAGE_DIR, 'previews', imageId);
-  await fs.mkdir(previewDir, { recursive: true });
-
-  // 3. Generate preview
-  const previewPath = path.join(previewDir, 'preview.jpg');
-
-  console.log(`[Preview Handler] Creating preview: ${previewPath}`);
+  try {
+    await fs.access(localPath)
+  } catch {
+    throw new Error(`Original image not found at: ${localPath}`)
+  }
 
   try {
-    // Get original metadata to determine scaling
-    const metadata = await sharp(originalPath).metadata();
-    const maxDimension = Math.max(metadata.width || 0, metadata.height || 0);
+    const metadata = await sharp(localPath).metadata()
+    const maxDimension = Math.max(metadata.width || 0, metadata.height || 0)
     
-    let transform = sharp(originalPath);
+    let transform = sharp(localPath)
 
-    // Only resize if larger than max preview size
     if (maxDimension > 2000) {
       transform = transform.resize(2000, 2000, {
         fit: 'inside',
         withoutEnlargement: true
-      });
+      })
     }
 
-    await transform
+    const previewBuffer = await transform
       .jpeg({ quality: 85, progressive: true })
-      .toFile(previewPath);
+      .toBuffer()
 
-    console.log(`[Preview Handler] Preview created: ${previewPath}`);
-  } catch (error) {
-    console.error(`[Preview Handler] Failed to generate preview:`, error);
-    throw error;
-  }
+    const previewPath = `${imageId}/preview.jpg`
+    let finalPath: string
 
-  // 4. Update image record with preview path
-  console.log(`[Preview Handler] Updating image record with preview path: ${imageId}`);
-  
-  const image = await prisma.image.findUnique({ where: { id: imageId } });
-  
-  // Check if this is the last derived asset job to complete
-  // If both thumbnail and preview are done, mark image as STORED
-  const shouldMarkStored = !!image?.thumbnailPath;
-
-  await prisma.image.update({
-    where: { id: imageId },
-    data: {
-      previewPath: previewPath,
-      status: shouldMarkStored ? 'STORED' : 'PROCESSING'
+    if (USE_SUPABASE_STORAGE) {
+      const result = await storeBuffer(previewBuffer, {
+        bucket: BUCKETS.PROCESSED,
+        path: previewPath,
+        contentType: 'image/jpeg',
+      })
+      finalPath = result.publicUrl || result.fullPath
+      console.log(`[Preview Handler] Uploaded to: ${result.publicUrl}`)
+    } else {
+      const previewDir = path.join(
+        process.env.STORAGE_DIR || '/tmp/storage', 
+        'processed', 
+        imageId
+      )
+      await fs.mkdir(previewDir, { recursive: true })
+      const localPreviewPath = path.join(previewDir, 'preview.jpg')
+      await fs.writeFile(localPreviewPath, previewBuffer)
+      finalPath = localPreviewPath
+      console.log(`[Preview Handler] Created: ${localPreviewPath}`)
     }
-  });
 
-  console.log(`[Preview Handler] Preview complete: ${imageId}`);
+    const image = await prisma.image.findUnique({ where: { id: imageId } })
+    const shouldMarkStored = !!image?.thumbnailPath
+
+    await prisma.image.update({
+      where: { id: imageId },
+      data: {
+        previewPath: finalPath,
+        status: shouldMarkStored ? 'STORED' : 'PROCESSING'
+      }
+    })
+
+    console.log(`[Preview Handler] Preview complete: ${imageId}`)
+  } catch (error) {
+    console.error(`[Preview Handler] Failed to generate preview:`, error)
+    throw error
+  }
 }

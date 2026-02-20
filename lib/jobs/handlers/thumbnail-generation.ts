@@ -1,101 +1,128 @@
-// Phase 2: Thumbnail Generation Handler
-// Generates thumbnail images at multiple sizes using Sharp
+import fs from 'fs/promises'
+import path from 'path'
+import os from 'os'
+import sharp from 'sharp'
+import prisma from '@/lib/prisma'
+import { 
+  storeBuffer, 
+  retrieveFile, 
+  USE_SUPABASE_STORAGE, 
+  BUCKETS,
+  getFileUrl 
+} from '@/lib/storage'
 
-import fs from 'fs/promises';
-import path from 'path';
-import os from 'os';
-import sharp from 'sharp';
-import prisma from '@/lib/prisma';
+const SIZES = [128, 256, 512]
 
-const STORAGE_DIR = process.env.STORAGE_DIR || '/tmp/storage';
-
-/**
- * Generate thumbnails at multiple sizes
- * Safe to regenerate - overwrites existing thumbnails
- */
 export async function handleThumbnailGeneration(payload: any, jobId: string): Promise<void> {
-  let { imageId, originalPath, sizes } = payload;
+  let { imageId, originalPath } = payload
 
-  console.log(`[Thumbnail Handler] Generating thumbnails for: ${imageId}`, { sizes });
+  console.log(`[Thumbnail Handler] Generating thumbnails for: ${imageId}`)
+  console.log(`[Thumbnail Handler] Using Supabase Storage: ${USE_SUPABASE_STORAGE}`)
 
-  // 1. Validate original file exists
-  let fileExists = false;
-  try {
-    await fs.access(originalPath);
-    fileExists = true;
-  } catch {
-    console.error(`[Thumbnail Handler] Original image not found at: ${originalPath}`);
-    // Try to find the file in common temp locations
-    const tempLocations = [
-      path.join(process.env.STORAGE_DIR || '/tmp/storage', 'temp', 'ingest', path.basename(originalPath)),
-      path.join(process.env.TEMP || '/tmp', 'v0-frame', 'ingest', path.basename(originalPath)),
-      path.join(os.tmpdir(), 'v0-frame', 'ingest', path.basename(originalPath)),
-    ];
+  let localPath = originalPath
+
+  if (USE_SUPABASE_STORAGE && originalPath.includes('/')) {
+    const [bucket, ...pathParts] = originalPath.split('/')
+    const storagePath = pathParts.join('/')
     
-    for (const loc of tempLocations) {
-      try {
-        await fs.access(loc);
-        console.log(`[Thumbnail Handler] Found image at alternative location: ${loc}`);
-        originalPath = loc;
-        fileExists = true;
-        break;
-      } catch {
-        // Continue to next location
+    console.log(`[Thumbnail Handler] Downloading from Supabase: ${bucket}/${storagePath}`)
+    
+    try {
+      localPath = await retrieveFile({
+        bucket: bucket as any,
+        path: storagePath,
+      })
+      console.log(`[Thumbnail Handler] Downloaded to: ${localPath}`)
+    } catch (error) {
+      console.error(`[Thumbnail Handler] Failed to download:`, error)
+      await prisma.image.update({
+        where: { id: imageId },
+        data: { status: 'FAILED' }
+      })
+      throw error
+    }
+  } else {
+    try {
+      await fs.access(originalPath)
+    } catch {
+      const tempLocations = [
+        path.join(process.env.VERCEL ? '/tmp' : os.tmpdir(), 'ingest', path.basename(originalPath)),
+        path.join(process.env.VERCEL ? '/tmp' : os.tmpdir(), 'v0-frame', 'ingest', path.basename(originalPath)),
+      ]
+      
+      for (const loc of tempLocations) {
+        try {
+          await fs.access(loc)
+          localPath = loc
+          break
+        } catch {}
       }
     }
   }
 
-  if (!fileExists) {
-    // Mark image as failed
+  try {
+    await fs.access(localPath)
+  } catch {
     await prisma.image.update({
       where: { id: imageId },
       data: { status: 'FAILED' }
-    });
-    throw new Error(`Original image not found at: ${originalPath}`);
+    })
+    throw new Error(`Original image not found at: ${localPath}`)
   }
 
-  // 2. Ensure thumbnail directory exists
-  const thumbnailDir = path.join(STORAGE_DIR, 'thumbnails', imageId);
-  await fs.mkdir(thumbnailDir, { recursive: true });
+  const thumbnailPaths: Record<number, string> = {}
 
-  // 3. Generate thumbnails for each size
-  const thumbnailPaths: Record<number, string> = {};
-
-  for (const size of sizes) {
-    const thumbPath = path.join(thumbnailDir, `thumb-${size}.jpg`);
-    
-    console.log(`[Thumbnail Handler] Generating ${size}px thumbnail: ${thumbPath}`);
-    
+  for (const size of SIZES) {
     try {
-      await sharp(originalPath)
+      const thumbBuffer = await sharp(localPath)
         .resize(size, size, {
           fit: 'cover',
           position: 'center'
         })
         .jpeg({ quality: 80 })
-        .toFile(thumbPath);
-      
-      thumbnailPaths[size] = thumbPath;
-      console.log(`[Thumbnail Handler] Created thumbnail: ${size}px`);
+        .toBuffer()
+
+      const thumbPath = `${imageId}/thumb-${size}.jpg`
+
+      if (USE_SUPABASE_STORAGE) {
+        const result = await storeBuffer(thumbBuffer, {
+          bucket: BUCKETS.THUMBNAILS,
+          path: thumbPath,
+          contentType: 'image/jpeg',
+        })
+        thumbnailPaths[size] = result.publicUrl || result.fullPath
+        console.log(`[Thumbnail Handler] Uploaded ${size}px: ${result.publicUrl}`)
+      } else {
+        const localThumbDir = path.join(
+          process.env.STORAGE_DIR || '/tmp/storage', 
+          'thumbnails', 
+          imageId
+        )
+        await fs.mkdir(localThumbDir, { recursive: true })
+        const localThumbPath = path.join(localThumbDir, `thumb-${size}.jpg`)
+        await fs.writeFile(localThumbPath, thumbBuffer)
+        thumbnailPaths[size] = localThumbPath
+        console.log(`[Thumbnail Handler] Created ${size}px: ${localThumbPath}`)
+      }
     } catch (error) {
-      console.error(`[Thumbnail Handler] Failed to generate ${size}px thumbnail:`, error);
-      throw error;
+      console.error(`[Thumbnail Handler] Failed to generate ${size}px thumbnail:`, error)
+      throw error
     }
   }
 
-  // 4. Store the smallest thumbnail path in the image record
-  // (for quick previews in listings)
-  const smallestSize = Math.min(...sizes);
-  const thumbPath = thumbnailPaths[smallestSize];
+  const smallestSize = Math.min(...SIZES)
+  const thumbnailPath = thumbnailPaths[smallestSize]
 
-  console.log(`[Thumbnail Handler] Updating image record with thumbnail path: ${imageId}`);
-  
+  const image = await prisma.image.findUnique({ where: { id: imageId } })
+  const shouldMarkStored = !!image?.previewPath
+
   await prisma.image.update({
     where: { id: imageId },
     data: {
-      thumbnailPath: thumbPath
+      thumbnailPath: thumbnailPath,
+      status: shouldMarkStored ? 'STORED' : 'PROCESSING'
     }
-  });
+  })
 
-  console.log(`[Thumbnail Handler] Thumbnails complete: ${imageId}`);
+  console.log(`[Thumbnail Handler] Thumbnails complete: ${imageId}`)
 }

@@ -1,51 +1,90 @@
-// Phase 2: Offload Original Handler (Simplified)
-// NOTE: Home server integration moved to Phase 8
-// This handler now skips file movement and just enqueues derived asset jobs
-// Original files remain in temp storage until Phase 8
+import fs from 'fs/promises'
+import prisma from '@/lib/prisma'
+import { enqueueThumbnailJob, enqueuePreviewJob, enqueueExifJob } from '@/lib/jobs/queue'
+import { 
+  storeFile, 
+  USE_SUPABASE_STORAGE, 
+  BUCKETS,
+  type BucketName 
+} from '@/lib/storage'
 
-import prisma from '@/lib/prisma';
-import { enqueueThumbnailJob, enqueuePreviewJob, enqueueExifJob } from '@/lib/jobs/queue';
-
-/**
- * Simplified Offload Handler (Phase 2)
- * 
- * Since home server integration is deferred to Phase 8, this handler:
- * 1. Skips actual file movement (temp file stays in place)
- * 2. Updates image status to PROCESSING
- * 3. Enqueues derived asset generation jobs (thumbnails, previews, EXIF)
- * 
- * In Phase 8, this will be enhanced to:
- * - Stream file to home server
- * - Verify checksum after transfer
- * - Update status to STORED after confirmation
- */
 export async function handleOffloadOriginal(payload: any, jobId: string): Promise<void> {
-  const { imageId, tempPath } = payload;
+  const { imageId, tempPath, checksum } = payload
 
-  console.log(`[Offload Handler] Processing image: ${imageId}`);
-  console.log(`[Offload Handler] NOTE: Home server offload deferred to Phase 8`);
-  console.log(`[Offload Handler] Temp file remains at: ${tempPath}`);
+  console.log(`[Offload Handler] Processing image: ${imageId}`)
+  console.log(`[Offload Handler] Using Supabase Storage: ${USE_SUPABASE_STORAGE}`)
 
-  // Update image record to PROCESSING state
-  // Note: tempPath stays the same (still in temp storage)
-  const image = await prisma.image.update({
+  const image = await prisma.image.findUnique({
+    where: { id: imageId },
+    include: { album: true }
+  })
+
+  if (!image) {
+    throw new Error(`Image not found: ${imageId}`)
+  }
+
+  let finalPath = tempPath
+  let storageBucket: BucketName | null = null
+  let storagePath: string | null = null
+
+  if (USE_SUPABASE_STORAGE) {
+    console.log(`[Offload Handler] Uploading to Supabase Storage...`)
+
+    try {
+      const extension = tempPath.split('.').pop() || 'bin'
+      
+      let bucket: BucketName
+      let destPath: string
+
+      if (image.storageType === 'ALBUM' && image.albumId && image.album?.projectId) {
+        bucket = BUCKETS.PROJECT_ALBUMS
+        destPath = `projects/${image.album.projectId}/albums/${image.albumId}/${imageId}.${extension}`
+      } else {
+        bucket = BUCKETS.USER_GALLERY
+        destPath = `${image.userId}/Gallery/images/${imageId}.${extension}`
+      }
+
+      const result = await storeFile(tempPath, {
+        bucket,
+        path: destPath,
+        contentType: image.mimeType,
+      })
+
+      storageBucket = bucket
+      storagePath = destPath
+      finalPath = result.publicUrl || result.fullPath
+
+      console.log(`[Offload Handler] Uploaded to: ${result.fullPath}`)
+      console.log(`[Offload Handler] Public URL: ${result.publicUrl}`)
+
+      await fs.unlink(tempPath).catch(() => {})
+      console.log(`[Offload Handler] Cleaned up temp file: ${tempPath}`)
+
+    } catch (error) {
+      console.error(`[Offload Handler] Failed to upload to Supabase:`, error)
+      throw error
+    }
+  }
+
+  await prisma.image.update({
     where: { id: imageId },
     data: {
-      status: 'PROCESSING'   // Phase 2: Begin processing
+      status: 'PROCESSING',
+      tempPath: USE_SUPABASE_STORAGE && storagePath ? `${storageBucket}/${storagePath}` : tempPath,
     }
-  });
+  })
 
-  console.log(`[Offload Handler] Image status updated to PROCESSING: ${imageId}`);
+  console.log(`[Offload Handler] Image status updated to PROCESSING: ${imageId}`)
 
-  // Enqueue derived asset generation jobs
-  // These will process the temp file and generate thumbnails/previews
-  console.log(`[Offload Handler] Enqueueing derived asset jobs: ${imageId}`);
+  console.log(`[Offload Handler] Enqueueing derived asset jobs: ${imageId}`)
+  
+  const pathForJobs = USE_SUPABASE_STORAGE && storagePath 
+    ? `${storageBucket}/${storagePath}` 
+    : tempPath
 
-  await enqueueThumbnailJob(imageId, tempPath);
-  await enqueuePreviewJob(imageId, tempPath);
-  await enqueueExifJob(imageId, tempPath);
+  await enqueueThumbnailJob(imageId, pathForJobs)
+  await enqueuePreviewJob(imageId, pathForJobs)
+  await enqueueExifJob(imageId, pathForJobs)
 
-  console.log(`[Offload Handler] Job complete: ${imageId}`);
-  console.log(`[Offload Handler] Images will remain in PROCESSING state until all derived assets are generated`);
-  console.log(`[Offload Handler] Home server offload scheduled for Phase 8`);
+  console.log(`[Offload Handler] Job complete: ${imageId}`)
 }

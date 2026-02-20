@@ -30,7 +30,8 @@ next-env.d.ts
 nul
 
 #for storage of temporary files
-tmp
-storage
+/tmp
+/storage
 public/storage
 public/tmp
+
