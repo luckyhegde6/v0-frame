@@ -5,7 +5,7 @@ import prisma from '@/lib/prisma'
 import fs from 'fs'
 import path from 'path'
 import os from 'os'
-import { supabaseAdmin, BUCKETS, isStorageConfigured, listFiles } from '@/lib/storage/supabase'
+import { supabaseAdmin, BUCKETS, isStorageConfigured } from '@/lib/storage/supabase'
 
 const STORAGE_DIR = process.env.STORAGE_DIR || 
   (process.env.VERCEL ? '/tmp/storage' : path.join(os.tmpdir(), 'v0-frame', 'storage'))
@@ -101,33 +101,28 @@ async function getSupabaseBucketStats(): Promise<BucketStats[]> {
     try {
       let totalSize = 0
       let fileCount = 0
-      let cursor: string | undefined
 
-      do {
-        const { data, error } = await supabaseAdmin.storage
-          .from(bucket)
-          .list('', {
-            limit: 1000,
-            cursor,
-            sortBy: { column: 'created_at', order: 'desc' }
-          })
+      const { data, error } = await supabaseAdmin.storage
+        .from(bucket)
+        .list('', {
+          limit: 1000,
+          sortBy: { column: 'created_at', order: 'desc' }
+        })
 
-        if (error) {
-          console.error(`Error listing bucket ${bucket}:`, error)
-          break
-        }
+      if (error) {
+        console.error(`Error listing bucket ${bucket}:`, error)
+        results.push({ name, size: 0, fileCount: 0 })
+        continue
+      }
 
-        if (!data || data.length === 0) break
-
+      if (data) {
         for (const item of data) {
           if (item.metadata?.size) {
             totalSize += item.metadata.size
           }
           fileCount++
         }
-
-        cursor = data.length === 1000 ? data[data.length - 1].id : undefined
-      } while (cursor)
+      }
 
       results.push({ name, size: totalSize, fileCount })
     } catch (error) {
@@ -179,57 +174,88 @@ export async function GET(request: NextRequest) {
     const totalSize = directories.reduce((sum, d) => sum + d.size, 0)
     const totalFiles = directories.reduce((sum, d) => sum + d.fileCount, 0)
 
-    const [
-      imageCount,
-      userCount,
-      projectCount,
-      albumCount,
-      totalImageSize,
-      processingCount,
-      storedCount
-    ] = await Promise.all([
-      prisma.image.count(),
-      prisma.user.count(),
-      prisma.project.count(),
-      prisma.album.count(),
-      prisma.image.aggregate({
-        _sum: { sizeBytes: true }
-      }),
-      prisma.image.count({ where: { status: 'PROCESSING' } }),
-      prisma.image.count({ where: { status: 'STORED' } })
-    ])
-
-    const storageByUser = await prisma.image.groupBy({
-      by: ['userId'],
-      _sum: { sizeBytes: true },
-      _count: { id: true },
-      orderBy: { _sum: { sizeBytes: 'desc' } },
-      take: 10
+    const imageCount = await prisma.image.count()
+    const userCount = await prisma.user.count()
+    const projectCount = await prisma.project.count()
+    const albumCount = await prisma.album.count()
+    
+    const totalImageSize = await prisma.image.aggregate({
+      _sum: { sizeBytes: true }
     })
+    
+    const processingCount = await prisma.image.count({ 
+      where: { status: 'PROCESSING' } 
+    }).catch(() => 0)
+    
+    const storedCount = await prisma.image.count({ 
+      where: { status: 'STORED' } 
+    }).catch(() => 0)
 
-    const userIds = storageByUser.map(s => s.userId)
-    const users = await prisma.user.findMany({
-      where: { id: { in: userIds } },
-      select: { id: true, name: true, email: true }
-    })
+    let topUsers: Array<{
+      user: { id: string; name: string | null; email: string | null }
+      sizeBytes: number
+      imageCount: number
+    }> = []
 
-    const userStorageMap = new Map(users.map(u => [u.id, u]))
-    const topUsers = storageByUser.map(s => ({
-      user: userStorageMap.get(s.userId) || { id: s.userId, name: 'Unknown', email: 'Unknown' },
-      sizeBytes: s._sum.sizeBytes || 0,
-      imageCount: s._count.id
-    }))
+    try {
+      const storageByUser = await prisma.image.groupBy({
+        by: ['userId'],
+        _sum: { sizeBytes: true },
+        _count: { id: true },
+        orderBy: { _sum: { sizeBytes: 'desc' } },
+        take: 10
+      })
 
-    const storageByType = await prisma.image.groupBy({
-      by: ['storageType'],
-      _sum: { sizeBytes: true },
-      _count: { id: true }
-    })
+      const userIds = storageByUser.map(s => s.userId)
+      const users = await prisma.user.findMany({
+        where: { id: { in: userIds } },
+        select: { id: true, name: true, email: true }
+      })
 
-    const statusByType = await prisma.image.groupBy({
-      by: ['status'],
-      _count: { id: true }
-    })
+      const userStorageMap = new Map(users.map(u => [u.id, u]))
+      topUsers = storageByUser.map(s => ({
+        user: userStorageMap.get(s.userId) || { id: s.userId, name: 'Unknown', email: 'Unknown' },
+        sizeBytes: s._sum.sizeBytes || 0,
+        imageCount: s._count.id
+      }))
+    } catch (error) {
+      console.error('[StorageAPI] Error getting user storage:', error)
+    }
+
+    let byType: Array<{ type: string; sizeBytes: number; sizeFormatted: string; count: number }> = []
+    
+    try {
+      const storageByType = await prisma.image.groupBy({
+        by: ['storageType' as never],
+        _sum: { sizeBytes: true },
+        _count: { id: true }
+      })
+      
+      byType = (storageByType as Array<{ storageType: string; _sum: { sizeBytes: number | null }; _count: { id: number } }>).map(t => ({
+        type: t.storageType,
+        sizeBytes: t._sum.sizeBytes || 0,
+        sizeFormatted: formatBytes(t._sum.sizeBytes || 0),
+        count: t._count.id
+      }))
+    } catch (error) {
+      console.error('[StorageAPI] Error getting storage by type:', error)
+    }
+
+    let byStatus: Array<{ status: string; count: number }> = []
+    
+    try {
+      const statusByType = await prisma.image.groupBy({
+        by: ['status'],
+        _count: { id: true }
+      })
+      
+      byStatus = statusByType.map(s => ({
+        status: s.status,
+        count: s._count.id
+      }))
+    } catch (error) {
+      console.error('[StorageAPI] Error getting status counts:', error)
+    }
 
     return NextResponse.json({
       storage: {
@@ -255,16 +281,8 @@ export async function GET(request: NextRequest) {
         ...u,
         sizeFormatted: formatBytes(u.sizeBytes)
       })),
-      byType: storageByType.map(t => ({
-        type: t.storageType,
-        sizeBytes: t._sum.sizeBytes || 0,
-        sizeFormatted: formatBytes(t._sum.sizeBytes || 0),
-        count: t._count.id
-      })),
-      byStatus: statusByType.map(s => ({
-        status: s.status,
-        count: s._count.id
-      })),
+      byType,
+      byStatus,
       storageDir: useSupabase ? 'Supabase Storage' : STORAGE_DIR,
       storageBackend: useSupabase ? 'supabase' : 'local',
       timestamp: new Date().toISOString()
@@ -272,7 +290,7 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error('[StorageAPI] Error:', error)
     return NextResponse.json(
-      { error: 'Failed to get storage stats' },
+      { error: 'Failed to get storage stats', details: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
     )
   }
