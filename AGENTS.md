@@ -234,10 +234,18 @@ __tests__/              # Test files
 
 Required in `.env`:
 - `DATABASE_URL` or `POSTGRES_PRISMA_URL` - PostgreSQL connection
+- `AUTH_SECRET` or `NEXTAUTH_SECRET` - Session encryption key
 - `ADMIN_EMAIL` - Email for SUPERADMIN account
 - `ADMIN_PASSWORD` - Password for SUPERADMIN account
 - `SETUP_SECRET` - Secret for ensure-superadmin API endpoint
-- Check `.env.example` for all required variables
+- `AUTH_TRUST_HOST=true` - Required for non-localhost URLs
+
+For Supabase Storage (Vercel/Production):
+- `SUPABASE_URL` - Supabase project URL
+- `SUPABASE_SERVICE_ROLE_KEY` - Server-side storage operations
+- `SUPABASE_ANON_KEY` - Client-side storage access (optional)
+
+Check `.env.example` for all required variables.
 
 ### SUPERADMIN Setup
 
@@ -444,16 +452,40 @@ Standard filesystem operations are available:
 
 See `.ai/docs/storage.md` for complete storage documentation.
 
+### Storage Backend Detection
+
+The system automatically uses Supabase Storage when configured:
+- Set `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` for cloud storage (Vercel)
+- Falls back to local filesystem for development
+
 ### Quick Reference
 
-| Type | Local Path | S3/R2 Key |
-|------|------------|-----------|
+| Type | Local Path | Supabase Bucket/Key |
+|------|------------|---------------------|
 | Temp | `storage/temp/ingest/{id}.{ext}` | `temp/ingest/{id}.{ext}` |
-| User Gallery | `storage/user/{userId}/Gallery/images/{id}.{ext}` | `user/{userId}/Gallery/images/{id}.{ext}` |
-| Project Album | `storage/projects/{projectId}/albums/{albumId}/{id}.{ext}` | `projects/{projectId}/albums/{albumId}/{id}.{ext}` |
+| User Gallery | `storage/user/{userId}/Gallery/images/{id}.{ext}` | `user-gallery/{userId}/Gallery/images/{id}.{ext}` |
+| Project Album | `storage/projects/{projectId}/albums/{albumId}/{id}.{ext}` | `project-albums/{projectId}/albums/{albumId}/{id}.{ext}` |
 | Thumbnails | `storage/thumbnails/{imageId}/thumb-{size}.jpg` | `thumbnails/{imageId}/thumb-{size}.jpg` |
 | Processed | `storage/processed/{imageId}/{quality}.{ext}` | `processed/{imageId}/{quality}.{ext}` |
 | Bin | `storage/bin/{originalPath}/{id}.{ext}` | `bin/{originalPath}/{id}.{ext}` |
+
+### Storage API
+
+Use the unified storage API from `@/lib/storage`:
+
+```typescript
+import { storeFile, storeBuffer, retrieveFile, getFileUrl, BUCKETS } from '@/lib/storage'
+
+// Store a file (auto-detects backend)
+const result = await storeFile(tempPath, {
+  bucket: BUCKETS.USER_GALLERY,
+  path: `${userId}/Gallery/images/${imageId}.jpg`,
+  contentType: 'image/jpeg',
+})
+
+// Get URL (public or signed)
+const url = await getFileUrl({ bucket: BUCKETS.THUMBNAILS, path: `${imageId}/thumb-512.jpg` })
+```
 
 ### Album vs Gallery
 - **Gallery** (`/admin/gallery`): Direct user images

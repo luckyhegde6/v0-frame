@@ -1,7 +1,7 @@
 # Storage Architecture & Conventions
 
-**Version**: 2.0.0  
-**Last Updated**: 2026-02-19
+**Version**: 3.0.0  
+**Last Updated**: 2026-02-20
 
 ---
 
@@ -9,10 +9,117 @@
 
 FRAME supports multiple storage backends:
 - **Local Filesystem** (development/Windows)
-- **Linux Server** (production/self-hosted)
-- **Cloud R2/S3** (future production)
+- **Supabase Storage** (production/Vercel serverless)
+- **Cloud R2/S3** (future alternative)
 
 This document defines the canonical storage structure, naming conventions, and bucket organization.
+
+---
+
+## Storage Backend Detection
+
+The system automatically detects the storage backend based on environment variables:
+
+```typescript
+// lib/storage/index.ts
+export const USE_SUPABASE_STORAGE = isStorageConfigured()
+
+// Checks for:
+// - SUPABASE_URL
+// - SUPABASE_SERVICE_ROLE_KEY
+```
+
+### Backend Priority
+1. **Supabase Storage** - When `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` are set
+2. **Local Filesystem** - Fallback for development
+
+---
+
+## Supabase Storage (Vercel/Production)
+
+Supabase Storage is the recommended backend for Vercel deployments because:
+- **Serverless-compatible**: No filesystem dependencies
+- **CDN-backed**: Fast global delivery
+- **Built-in transforms**: Image resizing/optimization
+- **Signed URLs**: Secure temporary access
+
+### Bucket Structure
+
+```typescript
+// lib/storage/supabase.ts
+export const BUCKETS = {
+  TEMP: 'temp',           // Ephemeral uploads
+  USER_GALLERY: 'user-gallery',   // User personal images
+  PROJECT_ALBUMS: 'project-albums', // Project album media
+  THUMBNAILS: 'thumbnails',   // Generated thumbnails (public)
+  PROCESSED: 'processed',     // Processed images
+} as const
+```
+
+### Bucket Configuration
+
+| Bucket | Public | Purpose | Retention |
+|--------|--------|---------|-----------|
+| `temp` | No | Upload staging | 24-48 hours |
+| `user-gallery` | No | User gallery images | Permanent |
+| `project-albums` | No | Project album media | Permanent |
+| `thumbnails` | Yes | Pre-generated thumbnails | Permanent |
+| `processed` | No | Quality-adjusted images | Permanent |
+
+### Creating Buckets (SQL)
+
+```sql
+-- Run in Supabase SQL Editor
+INSERT INTO storage.buckets (id, name, public)
+VALUES 
+  ('temp', 'temp', false),
+  ('user-gallery', 'user-gallery', false),
+  ('project-albums', 'project-albums', false),
+  ('thumbnails', 'thumbnails', true),
+  ('processed', 'processed', false)
+ON CONFLICT (id) DO NOTHING;
+```
+
+### Storage API Usage
+
+```typescript
+import { storeFile, storeBuffer, retrieveFile, getFileUrl } from '@/lib/storage'
+
+// Store a file from local path
+const result = await storeFile(tempPath, {
+  bucket: BUCKETS.USER_GALLERY,
+  path: `${userId}/Gallery/images/${imageId}.jpg`,
+  contentType: 'image/jpeg',
+})
+
+// Store a buffer (for thumbnails/processed)
+const thumbResult = await storeBuffer(thumbBuffer, {
+  bucket: BUCKETS.THUMBNAILS,
+  path: `${imageId}/thumb-512.jpg`,
+  contentType: 'image/jpeg',
+})
+
+// Get public URL for thumbnail
+const url = await getFileUrl({
+  bucket: BUCKETS.THUMBNAILS,
+  path: `${imageId}/thumb-512.jpg`,
+})
+
+// Get signed URL for private file
+const signedUrl = await getFileUrl({
+  bucket: BUCKETS.USER_GALLERY,
+  path: `${userId}/Gallery/images/${imageId}.jpg`,
+}, 3600) // 1 hour expiry
+```
+
+### Environment Variables
+
+```bash
+# Required for Supabase Storage
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIs...  # Server-side operations
+SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIs...         # Client-side (optional)
+```
 
 ---
 
