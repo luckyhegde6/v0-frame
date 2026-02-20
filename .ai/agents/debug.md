@@ -9,6 +9,9 @@ tools:
   - view_code_item
   - run_command
   - read_terminal
+skills:
+  - .ai/skills/domain-knowledge/async-patterns.md
+  - .ai/skills/domain-knowledge/image-lifecycle.md
 constraints:
   - Assume failures are expected, not exceptional
   - Never suggest deleting data as a fix

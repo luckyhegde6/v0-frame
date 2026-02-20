@@ -7,6 +7,9 @@ tools:
   - write_file
   - view_file
   - run_command
+skills:
+  - .ai/skills/coding-standards/typescript.md
+  - .ai/contexts/testing.md
 constraints:
   - Follow TDD principles
   - Ensure adequate test coverage

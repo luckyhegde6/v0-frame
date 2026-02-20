@@ -35,6 +35,7 @@ pnpm db:push                # Push Prisma schema to database
 pnpm db:generate            # Generate Prisma client
 pnpm db:seed                # Run database seeders
 pnpm db:studio              # Open Prisma Studio GUI
+pnpm db:ensure-admin        # Ensure SUPERADMIN exists (from ADMIN_EMAIL/ADMIN_PASSWORD env vars)
 
 # Docker
 pnpm docker:up              # Start PostgreSQL container
@@ -233,7 +234,39 @@ __tests__/              # Test files
 
 Required in `.env`:
 - `DATABASE_URL` or `POSTGRES_PRISMA_URL` - PostgreSQL connection
+- `ADMIN_EMAIL` - Email for SUPERADMIN account
+- `ADMIN_PASSWORD` - Password for SUPERADMIN account
+- `SETUP_SECRET` - Secret for ensure-superadmin API endpoint
 - Check `.env.example` for all required variables
+
+### SUPERADMIN Setup
+
+The application requires a SUPERADMIN account for administrative access. Two methods are available:
+
+#### Method 1: CLI Script (Recommended for local/CI)
+
+```bash
+# Local development
+pnpm db:ensure-admin
+
+# Production/CI with environment variables
+ADMIN_EMAIL="admin@example.com" ADMIN_PASSWORD="secure-pass" pnpm db:ensure-admin
+```
+
+#### Method 2: API Endpoint (For Vercel/serverless)
+
+```bash
+# Check if superadmin exists
+curl "https://your-app.vercel.app/api/admin/ensure-superadmin?secret=YOUR_SETUP_SECRET"
+
+# Create/update superadmin
+curl -X POST "https://your-app.vercel.app/api/admin/ensure-superadmin" \
+  -H "Content-Type: application/json" \
+  -H "x-setup-secret: YOUR_SETUP_SECRET" \
+  -d '{}'
+```
+
+The API endpoint uses `SETUP_SECRET` for authentication (set in environment variables).
 
 ### Phase 4 - PRO Features & Projects
 

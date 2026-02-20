@@ -16,6 +16,7 @@
     "db:studio": "prisma studio",
     "docker:clean": "docker-compose down -v --remove-orphans",
     "local": "pnpm docker:up && pnpm db:push && pnpm db:seed && pnpm dev",
+    "db:ensure-admin": "npx tsx --env-file=.env scripts/ensure-superadmin.ts",
     "test": "vitest",
     "test:run": "vitest run",
     "test:ui": "vitest --ui",

@@ -109,6 +109,21 @@
       "timeout": 120000
     }
   },
+  "lsp": {
+    "typescript": {
+      "enabled": true,
+      "command": ["npx", "typescript-language-server", "--stdio"],
+      "selector": ["**/*.ts", "**/*.tsx"],
+      "initializationOptions": {
+        "preferences": {
+          "disableSuggestions": false
+        },
+        "typescript": {
+          "tsdk": "node_modules/typescript/lib"
+        }
+      }
+    }
+  },
   "permission": {
     "skill": {
       "*": "allow",
@@ -124,6 +139,32 @@
           "internal-*": "allow"
         }
       }
+    },
+    "create": {
+      "skills": [
+        ".ai/skills/coding-standards/typescript.md",
+        ".ai/skills/coding-standards/react-nextjs.md",
+        ".ai/skills/domain-knowledge/async-patterns.md",
+        ".ai/skills/domain-knowledge/image-lifecycle.md"
+      ]
+    },
+    "debug": {
+      "skills": [
+        ".ai/skills/domain-knowledge/async-patterns.md",
+        ".ai/skills/domain-knowledge/image-lifecycle.md"
+      ]
+    },
+    "test-engineer": {
+      "skills": [
+        ".ai/skills/coding-standards/typescript.md",
+        ".ai/contexts/testing.md"
+      ]
+    },
+    "refactor": {
+      "skills": [
+        ".ai/skills/coding-standards/typescript.md",
+        ".ai/skills/coding-standards/react-nextjs.md"
+      ]
     }
   },
   "plugin": ["opencode-helicone-session", "opencode-wakatime"]
