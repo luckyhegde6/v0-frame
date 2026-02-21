@@ -313,6 +313,59 @@ The API endpoint uses `SETUP_SECRET` for authentication (set in environment vari
 4. **Async-aware** - Respect the job-based architecture
 5. **Type-safe** - No loose typing without comments explaining why
 
+## Permission Requirements
+
+**IMPORTANT**: The AI agent must ask for user permission before performing any of the following actions:
+
+### Package Installation
+- ❌ **ASK BEFORE** running `pnpm add`, `npm install`, or any package installation
+- ❌ **ASK BEFORE** adding new dependencies to `package.json`
+- ✅ Reason: New packages affect bundle size, security, and maintenance burden
+- ✅ Format: "May I install [package-name] for [reason]?"
+
+### Git Commits
+- ❌ **ASK BEFORE** running `git commit` or `git add` followed by commit
+- ❌ **ASK BEFORE** creating any commit message
+- ✅ Reason: User may want to review changes before committing
+- ✅ Format: "May I commit these changes with message: [message]?"
+
+### Git Merges
+- ❌ **ASK BEFORE** running `git merge` on any branch
+- ❌ **ASK BEFORE** merging branches to main/master
+- ✅ Reason: Merges can cause conflicts and affect the main branch
+- ✅ Format: "May I merge [branch] into [target-branch]?"
+
+### File Deletion
+- ❌ **ASK BEFORE** deleting any file using `rm`, `del`, or similar commands
+- ❌ **ASK BEFORE** removing directories
+- ✅ Reason: Deletion is irreversible and may remove important files
+- ✅ Format: "May I delete [file/path]? Reason: [why]"
+
+### Database Changes
+- ❌ **ASK BEFORE** running `prisma db push` (modifies database schema)
+- ❌ **ASK BEFORE** running destructive SQL queries
+- ✅ Reason: Database changes can cause data loss
+- ✅ Format: "May I apply these schema changes: [summary]?"
+
+### Environment Changes
+- ❌ **ASK BEFORE** modifying `.env`, `.env.local`, or environment files
+- ✅ Reason: May contain sensitive configuration
+- ✅ Format: "May I update the environment configuration for [reason]?"
+
+### Summary Table
+
+| Action | Permission Required | Reason |
+|--------|-------------------|--------|
+| `pnpm add <package>` | ✅ YES | Bundle size, security |
+| `git commit` | ✅ YES | Code review |
+| `git merge` | ✅ YES | Conflict risk |
+| File deletion | ✅ YES | Irreversible |
+| `prisma db push` | ✅ YES | Schema changes |
+| `.env` modification | ✅ YES | Sensitive config |
+| Code editing | ❌ NO | Core functionality |
+| `pnpm dev` / testing | ❌ NO | Development workflow |
+| `git status` / `git diff` | ❌ NO | Read-only |
+
 ## Testing
 
 The project uses Vitest for unit testing and Playwright MCP for E2E testing. Run tests with:
@@ -447,6 +500,61 @@ Standard filesystem operations are available:
 - **Use snapshot, not screenshot** for assertions - it's more reliable
 - **Check console errors** after every significant action
 - **Store important discoveries** in Memory MCP for future reference
+- **MUST test UI changes with Playwright** - After any UI modification, always verify the page loads correctly using Playwright MCP before considering the task complete. Navigate to the page, check for console errors, and verify key elements are visible.
+
+### When to Use Playwright Testing (Required)
+
+Playwright testing is **REQUIRED** when:
+
+1. **UI Modifications** - Any change to React components, pages, or visual elements
+2. **New Pages** - Adding new routes or page components
+3. **Form Changes** - Modifying form fields, validation, or submission logic
+4. **API Integration in UI** - Changes to how frontend consumes API responses
+5. **Navigation Changes** - Adding or modifying links, redirects, or routing
+
+**Testing Checklist:**
+```
+1. Start dev server if not running
+2. Navigate to the modified page
+3. Take snapshot to verify structure
+4. Check console for errors (level: error)
+5. Interact with any new UI elements
+6. Verify expected behavior
+7. Close browser when done
+```
+
+### Verifying Completed Tasks with Playwright MCP
+
+When a user asks to verify that a task is complete (especially for todo-style tasks that have been marked as completed), use Playwright MCP to visually verify the implementation:
+
+1. **For Todo Lists**: When tasks are completed, use Playwright MCP to verify:
+   - Navigate to the relevant page
+   - Check that the completed feature is visible and working
+   - Look for strikethrough or completed status indicators
+   - Verify key UI elements are present
+
+2. **Example Workflow for Task Verification**:
+```
+1. Navigate to the modified page
+2. Take snapshot to verify the new feature is visible
+3. Check for console errors
+4. If it's a form, test the form submission
+5. If it's a list, verify items are displayed correctly
+6. Close browser when done
+```
+
+3. **Key Verification Points**:
+   - Page loads without errors
+   - New components/buttons are visible
+   - Navigation links work
+   - Forms can be submitted
+   - Data is displayed correctly
+   - No critical console errors
+
+4. **When Task is Complete**:
+   - Run Playwright to verify the feature works
+   - If verification passes, the task is truly complete
+   - Report verification results to the user
 
 ## Storage Conventions
 
@@ -490,6 +598,206 @@ const url = await getFileUrl({ bucket: BUCKETS.THUMBNAILS, path: `${imageId}/thu
 ### Album vs Gallery
 - **Gallery** (`/admin/gallery`): Direct user images
 - **Albums** (`/admin/albums`): Project-organized media
+
+## Task System
+
+The admin task system provides a unified interface for managing background operations. Access it at `/admin/tasks`.
+
+### Task Types
+
+| Type | Route | Description |
+|------|-------|-------------|
+| `COMPRESS_IMAGES` | `/admin/tasks/COMPRESS_IMAGES` | Compress images to reduce file size |
+| `GENERATE_THUMBNAILS` | `/admin/tasks/GENERATE_THUMBNAILS` | Regenerate missing thumbnails |
+| `REGENERATE_METADATA` | `/admin/tasks/REGENERATE_METADATA` | Re-extract EXIF metadata |
+| `EXTRACT_ARCHIVE` | `/admin/tasks/EXTRACT_ARCHIVE` | Extract ZIP/TAR archives |
+| `SYNC_STORAGE` | `/admin/tasks/SYNC_STORAGE` | Sync with cloud providers |
+| `BACKUP_DATABASE` | `/admin/tasks/BACKUP_DATABASE` | Create database backups |
+| `CLEANUP_TEMP` | `/admin/tasks/CLEANUP_TEMP` | Clean up temporary files |
+| `OPTIMIZE_STORAGE` | `/admin/tasks/OPTIMIZE_STORAGE` | Remove duplicates and orphans |
+| `OFFLINE_UPLOAD` | `/admin/tasks/OFFLINE_UPLOAD` | Batch upload from local/cloud |
+| `SYNC_USERS` | `/admin/tasks/SYNC_USERS` | Sync with external auth providers |
+
+### OFFLINE_UPLOAD Task
+
+The OFFLINE_UPLOAD task has specialized UI for batch uploading:
+
+**Upload Sources:**
+- **Computer**: Local file/folder picker using HTML5 File API
+- **Google Drive**: OAuth integration (requires `/api/cloud/auth` endpoint)
+- **Dropbox**: OAuth integration (requires `/api/cloud/auth` endpoint)
+
+**Upload Modes:**
+- **Files**: Select individual image/video files
+- **Folder**: Upload entire folder (creates album from folder name)
+
+**Destination Types:**
+- **Project**: Select project, optionally create new album (for folder mode)
+- **Album**: Select existing album to add files
+
+**Key Files:**
+- Task configuration: `app/admin/tasks/[type]/client.tsx`
+- Main task list: `app/admin/tasks/page.tsx`
+- All task types view: `app/admin/tasks/all/client.tsx`
+- Task API: `app/api/admin/tasks/route.ts`
+
+### Task Configuration Pattern
+
+Each task type defines its configuration in `TASK_CONFIGS`:
+
+```typescript
+const TASK_CONFIGS: Record<string, TaskConfig> = {
+  TASK_NAME: {
+    label: 'Display Name',
+    icon: LucideIcon,
+    description: 'Task description',
+    requiresSource: boolean,
+    requiresDestination: boolean,
+    sourceTypes: ('project' | 'album' | 'images')[],
+    configOptions: [
+      {
+        name: 'optionName',
+        label: 'Display Label',
+        type: 'select' | 'number' | 'toggle',
+        options: [{ value: 'key', label: 'Label' }], // for select
+        default: any,
+        min: number, // for number
+        max: number  // for number
+      }
+    ]
+  }
+}
+```
+
+### Extending Tasks
+
+To add a new task type:
+
+1. Add the enum value to `TaskType` in `prisma/schema.prisma`
+2. Add the task configuration to `TASK_CONFIGS` in `app/admin/tasks/[type]/client.tsx`
+3. Add the task info to `TASK_TYPES` in `app/admin/tasks/page.tsx`
+4. Add the task info to `TASK_TYPES` in `app/admin/tasks/all/client.tsx`
+5. Implement the task handler in the job processor
+
+## Job Processing System
+
+The application uses a job queue for background image processing tasks like thumbnail generation, EXIF extraction, and file offloading.
+
+### Job Types
+
+| Type | Handler | Description |
+|------|---------|-------------|
+| `OFFLOAD_ORIGINAL` | `handleOffloadOriginal` | Move original file to permanent storage |
+| `THUMBNAIL_GENERATION` | `handleThumbnailGeneration` | Generate thumbnails in multiple sizes |
+| `PREVIEW_GENERATION` | `handlePreviewGeneration` | Generate preview image |
+| `EXIF_ENRICHMENT` | `handleExifEnrichment` | Extract EXIF metadata |
+
+### Job Lifecycle
+
+```
+PENDING → RUNNING → COMPLETED
+                 ↘ FAILED (with retry)
+```
+
+### Processing on Vercel (Serverless)
+
+On Vercel, jobs are processed via Vercel Cron Jobs:
+
+1. **Cron Endpoint**: `/api/cron/jobs` - Processes pending jobs in batches of 5
+2. **Schedule**: Every 5 minutes (configurable in `vercel.json`)
+3. **Security**: Requires `CRON_SECRET` environment variable
+
+**Configuration (`vercel.json`):**
+```json
+{
+  "crons": [{
+    "path": "/api/cron/jobs",
+    "schedule": "*/5 * * * *"
+  }]
+}
+```
+
+**Environment Variables:**
+- `CRON_SECRET` - Secret token for cron endpoint authentication
+
+### Processing Locally (Development)
+
+For local development, use the job runner:
+
+```typescript
+import { startJobRunner } from '@/lib/jobs/runner'
+import { initializeJobHandlers } from '@/lib/jobs/handlers'
+
+initializeJobHandlers()
+startJobRunner(5, 5000) // batchSize=5, pollInterval=5000ms
+```
+
+Or use the processor directly:
+
+```typescript
+import { processPendingJobs } from '@/lib/jobs/processor'
+
+const result = await processPendingJobs(5)
+// { total: 3, processed: 3, succeeded: 2, failed: 1, errors: [...] }
+```
+
+### Inngest Integration (Alternative)
+
+Inngest provides serverless-friendly job processing with retries and scheduling:
+
+**Files:**
+- `lib/inngest/client.ts` - Inngest client configuration
+- `app/inngest/functions.ts` - Job functions
+- `app/api/inngest/route.ts` - API endpoint for Inngest
+
+**Setup:**
+1. Create Inngest account at inngest.com
+2. Set `INNGEST_EVENT_KEY` and `INNGEST_SIGNING_KEY` environment variables
+3. Deploy - Inngest will automatically connect to `/api/inngest`
+
+**Trigger jobs via Inngest:**
+```typescript
+import { inngest } from '@/lib/inngest/client'
+
+await inngest.send({
+  name: 'job/thumbnail-generation',
+  data: { imageId, originalPath, jobId }
+})
+```
+
+### Adding New Job Handlers
+
+1. Create handler in `lib/jobs/handlers/`:
+```typescript
+export async function handleMyNewJob(payload: any, jobId: string): Promise<void> {
+  // Process job
+}
+```
+
+2. Register in `lib/jobs/handlers/index.ts`:
+```typescript
+registerJobHandler('MY_NEW_JOB', handleMyNewJob)
+```
+
+3. Add to Inngest functions in `app/inngest/functions.ts` (optional)
+
+### Client Utilities
+
+Client utilities for image status polling are in `lib/client-utils.ts`:
+
+```typescript
+import { 
+  pollImageStatus, 
+  getImageStatusLabel, 
+  formatBytes,
+  formatDate 
+} from '@/lib/client-utils'
+
+// Poll for image processing status
+await pollImageStatus(imageId, (image) => {
+  console.log(getImageStatusLabel(image.status))
+})
+```
 
 ---
 

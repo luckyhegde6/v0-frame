@@ -190,40 +190,41 @@ export default function AlbumsPage() {
         <div className="px-6 pb-8">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             {filteredAlbums.map(album => {
-              const CategoryIcon = getCategoryInfo(album.category).icon
-              return (
-                <div
-                  key={album.id}
-                  className="group bg-card border border-border rounded-lg overflow-hidden hover:border-primary/50 transition-colors cursor-pointer"
-                >
-                  <div className="aspect-video bg-muted flex items-center justify-center">
-                    {album.coverImage ? (
-                      <img src={album.coverImage} alt={album.name} className="w-full h-full object-cover" />
-                    ) : (
-                      <CategoryIcon className="w-12 h-12 text-muted-foreground" />
-                    )}
-                  </div>
-                  <div className="p-4">
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <h3 className="font-semibold">{album.name}</h3>
-                        <p className="text-sm text-muted-foreground">
-                          {album.imageCount} items
-                        </p>
-                      </div>
-                      <button className="p-1 hover:bg-muted rounded">
-                        <MoreVertical className="w-4 h-4 text-muted-foreground" />
-                      </button>
-                    </div>
-                    <div className="mt-2 flex items-center gap-2">
-                      <span className="text-xs px-2 py-0.5 bg-muted rounded-full text-muted-foreground">
-                        {getCategoryInfo(album.category).label}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              )
-            })}
+               const CategoryIcon = getCategoryInfo(album.category).icon
+               return (
+                 <Link
+                   key={album.id}
+                   href={`/albums/${album.id}`}
+                   className="group bg-card border border-border rounded-lg overflow-hidden hover:border-primary/50 transition-colors cursor-pointer block"
+                 >
+                   <div className="aspect-video bg-muted flex items-center justify-center">
+                     {album.coverImage ? (
+                       <img src={album.coverImage} alt={album.name} className="w-full h-full object-cover" />
+                     ) : (
+                       <CategoryIcon className="w-12 h-12 text-muted-foreground" />
+                     )}
+                   </div>
+                   <div className="p-4">
+                     <div className="flex items-start justify-between">
+                       <div>
+                         <h3 className="font-semibold">{album.name}</h3>
+                         <p className="text-sm text-muted-foreground">
+                           {album.imageCount} items
+                         </p>
+                       </div>
+                       <button className="p-1 hover:bg-muted rounded" onClick={(e) => e.preventDefault()}>
+                         <MoreVertical className="w-4 h-4 text-muted-foreground" />
+                       </button>
+                     </div>
+                     <div className="mt-2 flex items-center gap-2">
+                       <span className="text-xs px-2 py-0.5 bg-muted rounded-full text-muted-foreground">
+                         {getCategoryInfo(album.category).label}
+                       </span>
+                     </div>
+                   </div>
+                 </Link>
+               )
+             })}
           </div>
         </div>
       )}

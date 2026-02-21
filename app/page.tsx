@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { useSession, signOut } from 'next-auth/react'
-import { Image, Upload, Shield, ArrowRight, LogOut, User, FolderOpen, Crown, Layers, Star } from 'lucide-react'
+import { Image, Upload, Shield, ArrowRight, LogOut, User, FolderOpen, Crown, Layers, Star, HelpCircle, Info } from 'lucide-react'
 
 export default function Home() {
   const { data: session, status } = useSession()
@@ -72,6 +72,20 @@ export default function Home() {
             </>
           ) : (
             <>
+              <Link
+                href="/about"
+                className="hidden sm:flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <Info className="w-4 h-4" />
+                About
+              </Link>
+              <Link
+                href="/help"
+                className="hidden sm:flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <HelpCircle className="w-4 h-4" />
+                Help
+              </Link>
               <Link
                 href="/gallery"
                 className="hidden sm:flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
@@ -305,6 +319,17 @@ export default function Home() {
         <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="text-2xl font-bold tracking-tighter">
             <span className="text-primary">FRAME</span>
+          </div>
+          <div className="flex items-center gap-6 text-sm">
+            <Link href="/about" className="text-muted-foreground hover:text-foreground transition-colors">
+              About
+            </Link>
+            <Link href="/help" className="text-muted-foreground hover:text-foreground transition-colors">
+              Help & Support
+            </Link>
+            <Link href="/auth/signin" className="text-muted-foreground hover:text-foreground transition-colors">
+              Sign In
+            </Link>
           </div>
           <p className="text-sm text-muted-foreground">
             © 2026 FRAME. All rights reserved.
