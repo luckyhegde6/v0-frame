@@ -65,7 +65,7 @@ Status: ✅ COMPLETE
 
 ## PHASE 2 — Job Runner and Asset Processing (LOCAL STORAGE)
 
-Status: ⏳ IN PROGRESS
+Status: ✅ COMPLETE
 
 > [!IMPORTANT]
 > **Phase 2 now focuses on cloud/local asset processing only.**
@@ -76,46 +76,46 @@ Status: ⏳ IN PROGRESS
 - Automatically generate web-optimized previews and thumbnails for all ingested images.
 - Improve gallery UX by loading optimized assets instead of originals.
 - Establish robust background job processing infrastructure.
-- Preserve lossless originals in temporary storage while providing a snappy interface.
+- preserve lossless originals in temporary storage while providing a snappy interface.
 
-### Tasks
-- [ ] **Job Runner Infrastructure**
-  - [ ] Database-backed job persistence
-  - [ ] Advisory locking mechanism
-  - [ ] Retry logic with exponential backoff
-  - [ ] Polling loop with configurable batch size
-  - [ ] Error handling and dead letter queue
-  
-- [ ] **OFFLOAD_ORIGINAL Handler (Simplified)**
-  - [ ] Skip actual file movement (no home server yet)
-  - [ ] Mark image as PROCESSING state
-  - [ ] Enqueue derived asset generation jobs
-  - [ ] Keep temp file in place (will move in Phase 8)
-  
-- [ ] **THUMBNAIL_GENERATION Handler**
-  - [ ] Generate multiple thumbnail sizes (64, 128, 256, 512px)
-  - [ ] Store in deterministic paths
-  - [ ] Use Sharp for high-quality resizing
-  
-- [ ] **PREVIEW_GENERATION Handler**
-  - [ ] Generate web-optimized preview (max 2000px)
-  - [ ] JPEG quality 85 with progressive encoding
-  - [ ] Store in deterministic path
-  
-- [ ] **EXIF_ENRICHMENT Handler**
-  - [ ] Extract full EXIF metadata
-  - [ ] Parse GPS coordinates
-  - [ ] Extract camera/lens information
-  - [ ] Store in database
-  
-- [ ] **Gallery Integration**
-  - [ ] Update UI to load thumbnails/previews
-  - [ ] Add processing status indicators
-  - [ ] Implement polling for processing updates
-  
-- [ ] **Admin APIs**
-  - [ ] `GET /api/admin/jobs` - List jobs with filtering
-  - [ ] `GET /api/admin/jobs/:id` - View job details
+### Tasks Completed
+- [x] **Job Runner Infrastructure**
+  - [x] Database-backed job persistence
+  - [x] Advisory locking mechanism
+  - [x] Retry logic with exponential backoff
+  - [x] Polling loop with configurable batch size
+  - [x] Error handling and dead letter queue
+ 
+- [x] **OFFLOAD_ORIGINAL Handler (Simplified)**
+  - [x] Skip actual file movement (no home server yet)
+  - [x] Mark image as PROCESSING state
+  - [x] Enqueue derived asset generation jobs
+  - [x] Keep temp file in place (will move in Phase 8)
+ 
+- [x] **THUMBNAIL_GENERATION Handler**
+  - [x] Generate multiple thumbnail sizes (64, 128, 256, 512px)
+  - [x] Store in deterministic paths
+  - [x] Use Sharp for high-quality resizing
+ 
+- [x] **PREVIEW_GENERATION Handler**
+  - [x] Generate web-optimized preview (max 2000px)
+  - [x] JPEG quality 85 with progressive encoding
+  - [x] Store in deterministic path
+ 
+- [x] **EXIF_ENRICHMENT Handler**
+  - [x] Extract full EXIF metadata
+  - [x] Parse GPS coordinates
+  - [x] Extract camera/lens information
+  - [x] Store in database
+ 
+- [x] **Gallery Integration**
+  - [x] Update UI to load thumbnails/previews
+  - [x] Add processing status indicators
+  - [x] Implement polling for processing updates
+ 
+- [x] **Admin APIs**
+  - [x] `GET /api/admin/jobs` - List jobs with filtering
+  - [x] `GET /api/admin/jobs/:id` - View job details
 
 ---
 
@@ -162,7 +162,7 @@ Status: ✅ COMPLETE
 ---
 
 ## PHASE 4 — Professional Projects
-Status: ⏳ IN PROGRESS
+Status: ✅ COMPLETE
 
 ### Goals
 - Enable organizational groupings (Projects) for professional photography workflows.
@@ -172,103 +172,103 @@ Status: ⏳ IN PROGRESS
 - Album settings and configuration.
 - Comprehensive audit logging for admin/superadmin.
 
-### Tasks
-- [ ] **Database Schema**
+### Tasks Completed
+- [x] **Database Schema**
   - [x] Project model with quota management
   - [x] ProjectImage join table
   - [x] ShareToken model for client sharing
-  - [ ] ProProfile model for business profile
-  - [ ] AuditLog model for comprehensive logging
-  - [ ] AlbumSettings model for album configuration
-  - [ ] ClientProjectAccess model for linked clients
-- [ ] **PRO Profile**
-  - [ ] Create profile page (/profile) for PRO users
-  - [ ] Fields: name, business logo, location, contact details, social media links, previous works link
-  - [ ] Edit profile functionality
-  - [ ] Profile visibility settings
-- [ ] **Project Management**
-  - [ ] Create/Update/Delete projects
-  - [ ] List user projects with pagination
-  - [ ] Event/Project name, start date, branding/watermark toggle
-  - [ ] Cover image for project
-  - [ ] Linked clients table in project
-- [ ] **Project Images**
-  - [ ] Add/remove images from projects
-  - [ ] Project-scoped image queries
-- [ ] **Sharing & QR Codes**
-  - [ ] Generate share tokens
-  - [ ] Share token expiry and access limits
-  - [ ] Public share view page
-  - [ ] QR code generation for share links
-  - [ ] Add service popup for generating links (after project creation)
-- [ ] **Album Settings**
-  - [ ] Album settings page/modal (PRO/ADMIN/SUPERADMIN only)
-  - [ ] Preferred upload size for images/videos/shorts (quality-based)
-  - [ ] Image resolution settings
-  - [ ] Watermark configuration (add/edit)
-  - [ ] Face recognition toggle (creates admin request job)
-  - [ ] Enable/Disable download album toggle
-  - [ ] Delete album access control
-- [ ] **Audit & Logging**
-  - [ ] AuditLog table for tracking:
+  - [x] ProProfile model for business profile
+  - [x] AuditLog model for comprehensive logging
+  - [x] AlbumSettings model for album configuration
+  - [x] ClientProjectAccess model for linked clients
+- [x] **PRO Profile**
+  - [x] Create profile page (/profile) for PRO users
+  - [x] Fields: name, business logo, location, contact details, social media links, previous works link
+  - [x] Edit profile functionality
+  - [x] Profile visibility settings
+- [x] **Project Management**
+  - [x] Create/Update/Delete projects
+  - [x] List user projects with pagination
+  - [x] Event/Project name, start date, branding/watermark toggle
+  - [x] Cover image for project
+  - [x] Linked clients table in project
+- [x] **Project Images**
+  - [x] Add/remove images from projects
+  - [x] Project-scoped image queries
+- [x] **Sharing & QR Codes**
+  - [x] Generate share tokens
+  - [x] Share token expiry and access limits
+  - [x] Public share view page
+  - [x] QR code generation for share links
+  - [x] Add service popup for generating links (after project creation)
+- [x] **Album Settings**
+  - [x] Album settings page/modal (PRO/ADMIN/SUPERADMIN only)
+  - [x] Preferred upload size for images/videos/shorts (quality-based)
+  - [x] Image resolution settings
+  - [x] Watermark configuration (add/edit)
+  - [x] Face recognition toggle (creates admin request job)
+  - [x] Enable/Disable download album toggle
+  - [x] Delete album access control
+- [x] **Audit & Logging**
+  - [x] AuditLog table for tracking:
     - Storage usage changes
     - Project create/edit/delete events
     - Share link generation/revocation
     - Job event generation
     - User create/edit/delete actions
-  - [ ] Audit page for ADMIN/SUPERADMIN only
-  - [ ] Filter audit logs by type, date, user
-- [ ] **Client Access Management**
-  - [ ] Project-Client access table
-  - [ ] Album access table
-  - [ ] PRO can grant Read access to clients from Users list
-  - [ ] Permission inheritance from project to album
-- [ ] **Quotas**
-  - [ ] Storage usage tracking
-  - [ ] Quota enforcement on upload
-  - [ ] Quota display in UI
+  - [x] Audit page for ADMIN/SUPERADMIN only
+  - [x] Filter audit logs by type, date, user
+- [x] **Client Access Management**
+  - [x] Project-Client access table
+  - [x] Album access table
+  - [x] PRO can grant Read access to clients from Users list
+  - [x] Permission inheritance from project to album
+- [x] **Quotas**
+  - [x] Storage usage tracking
+  - [x] Quota enforcement on upload
+  - [x] Quota display in UI
 
 ---
 
 ## PHASE 5 — Admin Control Plane
-Status: ⏳ IN PROGRESS
+Status: ✅ COMPLETE
 
 ### Goals
 - Provide a centralized dashboard for system observability and management.
 - Expose interactive API documentation (Swagger) for ecosystem growth.
 - Monitor server health, job queues, and hardware statistics.
 
-### Tasks
+### Tasks Completed
 
 #### 5.1 Schema Updates
-- [ ] Add `CANCELLED` to `JobStatus` enum
-- [ ] Add `JOB_RETRY`, `JOB_CANCELLED`, `JOB_FORCE_RUN` to `AuditAction` enum
+- [x] Add `CANCELLED` to `JobStatus` enum
+- [x] Add `JOB_RETRY`, `JOB_CANCELLED`, `JOB_FORCE_RUN` to `AuditAction` enum
 
 #### 5.2 Job Control API
-- [ ] `POST /api/admin/jobs/[id]/retry` - Retry failed jobs
-- [ ] `POST /api/admin/jobs/[id]/cancel` - Cancel pending jobs
-- [ ] `POST /api/admin/jobs/[id]/run` - Force run pending jobs
-- [ ] Audit logging for all job control actions
+- [x] `POST /api/admin/jobs/[id]/retry` - Retry failed jobs
+- [x] `POST /api/admin/jobs/[id]/cancel` - Cancel pending jobs
+- [x] `POST /api/admin/jobs/[id]/run` - Force run pending jobs
+- [x] Audit logging for all job control actions
 
 #### 5.3 Job Control UI
-- [ ] Update `/admin/jobs` page with action buttons
-- [ ] Add retry button for FAILED jobs
-- [ ] Add cancel button for PENDING jobs
-- [ ] Add job detail modal/drawer
-- [ ] Add bulk job operations
+- [x] Update `/admin/jobs` page with action buttons
+- [x] Add retry button for FAILED jobs
+- [x] Add cancel button for PENDING jobs
+- [x] Add job detail modal/drawer
+- [x] Add bulk job operations
 
 #### 5.4 Enhanced Dashboard
 - [x] Add real-time stats refresh
 - [x] Fix total users count on admin dashboard
-- [ ] Add processing queue depth indicator
-- [ ] Add recent activity feed
-- [ ] Add system alerts panel
+- [x] Add processing queue depth indicator
+- [x] Add recent activity feed
+- [x] Add system alerts panel
 
 #### 5.5 Server Health & Analytics
-- [ ] Enhanced system health page
-- [ ] Memory usage stats
-- [ ] Processing throughput metrics
-- [ ] Error rate tracking
+- [x] Enhanced system health page
+- [x] Memory usage stats
+- [x] Processing throughput metrics
+- [x] Error rate tracking
 
 #### 5.6 API Documentation
 - [x] Add job control endpoints to Swagger
@@ -276,6 +276,8 @@ Status: ⏳ IN PROGRESS
 - [x] Ensure all admin endpoints documented
 - [x] Fix Swagger auth for logged-in users (moved to /admin/api-docs)
 - [x] Add API token endpoint for programmatic access
+- [x] Add BearerAuth/CookieAuth guide
+- [x] Add swagger for Notifications, Uploads, Share, PRO requests, Auth, Token
 
 #### 5.7 Tasks Panel Integration
 - [x] Connect Tasks panel to Jobs system
@@ -292,7 +294,7 @@ Status: ⏳ IN PROGRESS
 - [x] Add UserFavorite model for favorites functionality
 - [x] Add favorite toggle API endpoint
 - [x] Update images API to filter favorites
-- [ ] Add album settings integration
+- [x] Add album settings integration
 
 #### 5.9 Face Recognition Schema
 - [x] Add DetectedFace model
@@ -301,9 +303,31 @@ Status: ⏳ IN PROGRESS
 - [x] Add ImageEmbedding model
 - [x] Add UserFavorite model
 
-#### 5.10 Testing
-- [ ] Unit tests for job control logic
-- [ ] E2E tests with Playwright MCP
+#### 5.10 PRO Requests Management
+- [x] Create /api/admin/requests endpoint
+- [x] Create /admin/requests page with Request->Task->Job mapping
+- [x] Add quick actions (Start, Complete, Reject, Retry)
+- [x] Add comment/notes section
+- [x] Add notification on request arrival
+- [x] Add requests link to admin navigation
+- [x] Add requests tile to admin dashboard
+
+#### 5.11 Password Reset System
+- [x] Add reset password link on login page
+- [x] Create password reset request API
+- [x] Create admin password reset management page
+- [x] Create magic link generation and validation
+- [x] Create password reset page with validation (6-16 chars, alphanumeric)
+
+#### 5.12 Public Pages
+- [x] Create /about page for public access
+- [x] Create /help/support page with query form
+- [x] Create access request form for anonymous users
+- [x] Add About and Help links to homepage navigation
+
+#### 5.13 Testing
+- [x] Unit tests for job control logic
+- [x] E2E tests with Playwright MCP
 
 ---
 

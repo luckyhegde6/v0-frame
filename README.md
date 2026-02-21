@@ -77,17 +77,26 @@ A persistent job runner loop executes within the Next.js runtime, picking up tas
 - **Phase 1: Ingestion Foundation** ✅ Complete
 - **Phase 2: Job Runner** ✅ Complete
 - **Phase 3: Auth & Access Control** ✅ Complete
-- **Phase 4: Professional Projects** ⏳ In Progress
+- **Phase 4: Professional Projects** ✅ Complete
+- **Phase 5: Admin Control Plane** ✅ Complete
+- **Phase 6-8** ⏳ Pending
 
-### What's New in Phase 3
+### What's New in Phase 4 & 5
 
-- **Authentication System**: NextAuth.js v5 with JWT sessions
-- **Role-Based Access Control**: USER, PRO, CLIENT, ADMIN roles
-- **Protected Routes**: /gallery, /upload require login
-- **Admin Dashboard**: System stats and user management
-- **Enhanced Navigation**: Header with breadcrumbs and back buttons
-- **Dynamic Landing Page**: Shows Logout when authenticated
-- **Error Handling**: Non-blocking toast notifications with console logging
+- **PRO Profile**: Business profiles with logo, contact, social links
+- **Projects**: Full CRUD with quota management, branding, cover images
+- **Albums**: Settings with quality, watermark, face recognition toggle
+- **Sharing**: Token-based sharing with expiry and access limits
+- **Client Access**: Project and album level access control
+- **Audit Logging**: Comprehensive action tracking
+- **Admin Dashboard**: Stats, users, gallery, storage management
+- **Job Control**: Retry, cancel, force-run failed jobs
+- **Tasks Panel**: Background task configuration (compress, thumbnails, etc.)
+- **PRO Requests**: Track and manage user requests (exports, face rec, etc.)
+- **Password Reset**: Self-service reset with admin approval
+- **Public Pages**: About and Help pages for unauthenticated users
+- **API Documentation**: Full Swagger docs with Bearer/Cookie auth
+- **Bearer Token**: Generate API tokens for programmatic access
 
 ### Authentication Demo
 
@@ -167,10 +176,21 @@ See [.ai/README.md](./.ai/README.md) for more details.
 ## Demo
 ![demo](./demo.gif)
 
-- Signin page: http://localhost:3000/auth/signin
-    **Demo accounts**:
-       - admin@frame.app / admin123 (Admin access)
-       - user@frame.app / user123 (Regular user)
-       - pro@frame.app / pro123 (Pro user)
-       - client@frame.app / client123 (Client user)
+### Key Pages
+- **Home**: http://localhost:3000/ (public landing page)
+- **About**: http://localhost:3000/about (system info)
+- **Help**: http://localhost:3000/help (support & access requests)
+- **Signin**: http://localhost:3000/auth/signin
+
+### Demo Accounts
+- admin@frame.app / admin123 (SUPERADMIN - full access)
+- admin2@frame.app / admin123 (ADMIN - admin panel)
+- user@frame.app / user123 (USER - basic gallery)
+- pro@frame.app / pro123 (PRO - projects, albums, profile)
+- client@frame.app / client123 (CLIENT - shared projects)
+
+### Public Features
+- **Password Reset**: Click "Forgot Password?" on signin page
+- **Access Request**: Visit /help to request User/Client/PRO access
+- **Public Queries**: Submit questions via /help page
 
