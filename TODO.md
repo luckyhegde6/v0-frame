@@ -231,7 +231,7 @@ Status: ⏳ IN PROGRESS
 ---
 
 ## PHASE 5 — Admin Control Plane
-Status: ⏳ PENDING
+Status: ⏳ IN PROGRESS
 
 ### Goals
 - Provide a centralized dashboard for system observability and management.
@@ -239,10 +239,71 @@ Status: ⏳ PENDING
 - Monitor server health, job queues, and hardware statistics.
 
 ### Tasks
-- [ ] **Dashboard**: centralized UI for system health and job status
-- [ ] **Swagger**: Interactive API documentation
-- [ ] **Analytics**: Server stats, disk usage, and processing metrics
-- [ ] **Manual Job Control**: Retry, cancel, and monitor jobs
+
+#### 5.1 Schema Updates
+- [ ] Add `CANCELLED` to `JobStatus` enum
+- [ ] Add `JOB_RETRY`, `JOB_CANCELLED`, `JOB_FORCE_RUN` to `AuditAction` enum
+
+#### 5.2 Job Control API
+- [ ] `POST /api/admin/jobs/[id]/retry` - Retry failed jobs
+- [ ] `POST /api/admin/jobs/[id]/cancel` - Cancel pending jobs
+- [ ] `POST /api/admin/jobs/[id]/run` - Force run pending jobs
+- [ ] Audit logging for all job control actions
+
+#### 5.3 Job Control UI
+- [ ] Update `/admin/jobs` page with action buttons
+- [ ] Add retry button for FAILED jobs
+- [ ] Add cancel button for PENDING jobs
+- [ ] Add job detail modal/drawer
+- [ ] Add bulk job operations
+
+#### 5.4 Enhanced Dashboard
+- [x] Add real-time stats refresh
+- [x] Fix total users count on admin dashboard
+- [ ] Add processing queue depth indicator
+- [ ] Add recent activity feed
+- [ ] Add system alerts panel
+
+#### 5.5 Server Health & Analytics
+- [ ] Enhanced system health page
+- [ ] Memory usage stats
+- [ ] Processing throughput metrics
+- [ ] Error rate tracking
+
+#### 5.6 API Documentation
+- [x] Add job control endpoints to Swagger
+- [x] Add request/response examples
+- [x] Ensure all admin endpoints documented
+- [x] Fix Swagger auth for logged-in users (moved to /admin/api-docs)
+- [x] Add API token endpoint for programmatic access
+
+#### 5.7 Tasks Panel Integration
+- [x] Connect Tasks panel to Jobs system
+- [x] Add task types: Compress Images, Generate Thumbnails
+- [x] Add task scheduling and execution
+- [x] Add task progress tracking
+- [x] Create dedicated task configuration pages
+- [x] Add source selection (Project, Album, Images)
+- [x] Add configuration options per task type
+- [x] Map task types to job creation
+
+#### 5.8 Album & Favorites
+- [x] Fix album image display issues
+- [x] Add UserFavorite model for favorites functionality
+- [x] Add favorite toggle API endpoint
+- [x] Update images API to filter favorites
+- [ ] Add album settings integration
+
+#### 5.9 Face Recognition Schema
+- [x] Add DetectedFace model
+- [x] Add FaceGroup model
+- [x] Add DetectedObject model
+- [x] Add ImageEmbedding model
+- [x] Add UserFavorite model
+
+#### 5.10 Testing
+- [ ] Unit tests for job control logic
+- [ ] E2E tests with Playwright MCP
 
 ---
 
@@ -255,11 +316,26 @@ Status: ⏳ PENDING
 - Index all images into a vector database for natural language retrieval.
 
 ### Tasks
-- [ ] **Faces**: Face detection and face-grouping jobs
-- [ ] **Objects**: AI object tagging and scene classification
-- [ ] **Vectors**: Semantic image embeddings stored in pgvector
-- [ ] **Search**: Text-based semantic search
-- [ ] **Similarity**: Similar-image search
+
+#### 6.1 Face Recognition System
+- [ ] Add face recognition toggle to album settings
+- [ ] Create AdminTask for face recognition requests
+- [ ] Implement face detection job handler
+- [ ] Store face embeddings in pgvector
+- [ ] Auto-generate face-grouped albums
+- [ ] Add pet/venue/object detection options
+- [ ] Admin configurable detection parameters
+
+#### 6.2 Object Detection
+- [ ] AI object tagging and scene classification
+- [ ] Product detection for e-commerce
+- [ ] Custom object detection categories
+
+#### 6.3 Vector Search
+- [ ] Semantic image embeddings stored in pgvector
+- [ ] Text-based semantic search
+- [ ] Similar-image search
+- [ ] Face similarity search
 
 ---
 
@@ -272,6 +348,16 @@ Status: ⏳ PENDING
 - Implement robust backup and disaster recovery strategies.
 
 ### Tasks
+
+#### 7.1 Security (CRITICAL)
+- [ ] **RLS Security on Supabase** - Enable Row Level Security on all public tables
+  - `public.Project` - RLS disabled (security issue)
+  - `public.Album` - RLS disabled
+  - `public.Image` - RLS disabled
+  - All other exposed tables need RLS policies
+  - Reference: https://supabase.com/docs/guides/auth/row-level-security
+
+#### 7.2 Job Reliability
 - [ ] Idempotency keys for jobs
 - [ ] Dead-letter queue
 - [ ] Disk pressure handling (Vercel `/tmp` limits)

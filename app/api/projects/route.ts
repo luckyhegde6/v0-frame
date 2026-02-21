@@ -115,6 +115,7 @@ export async function GET(request: NextRequest) {
         ownerEmail: p.owner.email,
         imageCount: p._count.images + projectAlbumImageCount,
         albumCount: p.albums.length,
+        albums: p.albums, // Include albums array for task configuration
         storageQuota: p.quotaBytes.toString(),
         storageUsed: p.storageUsed.toString(),
         createdAt: p.createdAt,

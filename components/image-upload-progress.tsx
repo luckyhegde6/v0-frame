@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useEffect, useState } from 'react'
-import { getImageStatusLabel, pollImageStatus } from '@/lib/phase2/client-utils'
+import { getImageStatusLabel, pollImageStatus } from '@/lib/client-utils'
 
 interface ImageUploadProgressProps {
   imageId: string

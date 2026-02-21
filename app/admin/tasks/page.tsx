@@ -52,16 +52,16 @@ interface Task {
 }
 
 const TASK_TYPES = [
-  { value: 'COMPRESS_IMAGES', label: 'Compress Images', icon: Zap, description: 'Compress existing images to save storage' },
-  { value: 'EXTRACT_ARCHIVE', label: 'Extract Archive', icon: Archive, description: 'Extract uploaded ZIP/TAR archives' },
-  { value: 'OFFLINE_UPLOAD', label: 'Offline Upload', icon: Upload, description: 'Batch upload from offline storage' },
-  { value: 'SYNC_STORAGE', label: 'Sync Storage', icon: SyncIcon, description: 'Sync storage with cloud providers' },
-  { value: 'GENERATE_THUMBNAILS', label: 'Generate Thumbnails', icon: ImageIcon, description: 'Regenerate missing thumbnails' },
-  { value: 'REGENERATE_METADATA', label: 'Regenerate Metadata', icon: Settings, description: 'Re-extract EXIF metadata' },
-  { value: 'BACKUP_DATABASE', label: 'Backup Database', icon: Database, description: 'Create database backup' },
-  { value: 'CLEANUP_TEMP', label: 'Cleanup Temp', icon: Trash, description: 'Clean up temporary files' },
-  { value: 'OPTIMIZE_STORAGE', label: 'Optimize Storage', icon: HardDrive, description: 'Optimize storage allocation' },
-  { value: 'SYNC_USERS', label: 'Sync Users', icon: Users, description: 'Sync user data with external sources' }
+  { value: 'COMPRESS_IMAGES', label: 'Compress Images', icon: Zap, description: 'Compress existing images to save storage', hasConfigPage: true },
+  { value: 'EXTRACT_ARCHIVE', label: 'Extract Archive', icon: Archive, description: 'Extract uploaded ZIP/TAR archives', hasConfigPage: true },
+  { value: 'OFFLINE_UPLOAD', label: 'Offline Upload', icon: Upload, description: 'Batch upload from offline storage', hasConfigPage: true },
+  { value: 'SYNC_STORAGE', label: 'Sync Storage', icon: SyncIcon, description: 'Sync storage with cloud providers', hasConfigPage: true },
+  { value: 'GENERATE_THUMBNAILS', label: 'Generate Thumbnails', icon: ImageIcon, description: 'Regenerate missing thumbnails', hasConfigPage: true },
+  { value: 'REGENERATE_METADATA', label: 'Regenerate Metadata', icon: Settings, description: 'Re-extract EXIF metadata', hasConfigPage: true },
+  { value: 'BACKUP_DATABASE', label: 'Backup Database', icon: Database, description: 'Create database backup', hasConfigPage: true },
+  { value: 'CLEANUP_TEMP', label: 'Cleanup Temp', icon: Trash, description: 'Clean up temporary files', hasConfigPage: true },
+  { value: 'OPTIMIZE_STORAGE', label: 'Optimize Storage', icon: HardDrive, description: 'Optimize storage allocation', hasConfigPage: true },
+  { value: 'SYNC_USERS', label: 'Sync Users', icon: Users, description: 'Sync user data with external sources', hasConfigPage: true }
 ]
 
 const PRIORITIES = [
@@ -261,26 +261,20 @@ export default function AdminTasksPage() {
 
         {/* Task Type Quick Actions */}
         <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-6">
-          {TASK_TYPES.slice(0, 5).map(taskType => {
+          {TASK_TYPES.map(taskType => {
             const Icon = taskType.icon
             return (
-              <button
+              <Link
                 key={taskType.value}
-                onClick={() => {
-                  setNewTask({
-                    ...newTask,
-                    type: taskType.value,
-                    title: taskType.label
-                  })
-                  setShowCreateModal(true)
-                }}
+                href={`/admin/tasks/${taskType.value}`}
                 className="flex items-center gap-3 p-4 bg-card border border-border rounded-lg hover:border-primary/50 transition-colors text-left"
               >
-                <Icon className="w-6 h-6 text-primary" />
-                <div>
-                  <p className="font-medium text-sm">{taskType.label}</p>
+                <Icon className="w-6 h-6 text-primary flex-shrink-0" />
+                <div className="min-w-0">
+                  <p className="font-medium text-sm truncate">{taskType.label}</p>
+                  <p className="text-xs text-muted-foreground truncate">{taskType.description}</p>
                 </div>
-              </button>
+              </Link>
             )
           })}
         </div>

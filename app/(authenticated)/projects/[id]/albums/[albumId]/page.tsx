@@ -7,7 +7,7 @@ import {
   ArrowLeft, Loader2, Settings, Upload, Image, 
   Film, Video, Play, FileImage, Palette, Eye, 
   Download, Trash2, Save, User, Check, Scissors, 
-  Copy, GitBranch, X, Plus
+  Copy, GitBranch, X, Plus, Package
 } from 'lucide-react'
 import { handleApiError, showSuccess } from '@/lib/error-handler'
 
@@ -110,6 +110,7 @@ export default function AlbumDetailPage() {
   const [newAlbumCategory, setNewAlbumCategory] = useState('PHOTO_ALBUM')
   const [newAlbumDescription, setNewAlbumDescription] = useState('')
   const [creatingAlbum, setCreatingAlbum] = useState(false)
+  const [downloading, setDownloading] = useState(false)
 
   useEffect(() => {
     if (albumId) {
@@ -463,6 +464,83 @@ export default function AlbumDetailPage() {
     setNewAlbumCategory('PHOTO_ALBUM')
   }
 
+  const handleDownloadImage = async (imageId: string, fileName: string) => {
+    try {
+      const response = await fetch(`/api/images/${imageId}/download`)
+      if (response.ok) {
+        const blob = await response.blob()
+        const url = window.URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = fileName || 'image.jpg'
+        document.body.appendChild(a)
+        a.click()
+        window.URL.revokeObjectURL(url)
+        document.body.removeChild(a)
+        showSuccess('Image downloaded')
+      }
+    } catch (error) {
+      handleApiError(error, 'DownloadImage')
+    }
+  }
+
+  const handleBulkDownload = async () => {
+    if (selectedImages.length === 0) return
+    setDownloading(true)
+    try {
+      const response = await fetch(`/api/albums/${albumId}/download`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ imageIds: selectedImages })
+      })
+      
+      if (response.ok) {
+        const blob = await response.blob()
+        const url = window.URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = `${album?.name || 'album'}-download.zip`
+        document.body.appendChild(a)
+        a.click()
+        window.URL.revokeObjectURL(url)
+        document.body.removeChild(a)
+        showSuccess(`Downloaded ${selectedImages.length} images`)
+      }
+    } catch (error) {
+      handleApiError(error, 'BulkDownload')
+    } finally {
+      setDownloading(false)
+    }
+  }
+
+  const handleDownloadAll = async () => {
+    setDownloading(true)
+    try {
+      const response = await fetch(`/api/albums/${albumId}/download`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ downloadAll: true })
+      })
+      
+      if (response.ok) {
+        const blob = await response.blob()
+        const url = window.URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = `${album?.name || 'album'}-all.zip`
+        document.body.appendChild(a)
+        a.click()
+        window.URL.revokeObjectURL(url)
+        document.body.removeChild(a)
+        showSuccess('Album downloaded')
+      }
+    } catch (error) {
+      handleApiError(error, 'DownloadAll')
+    } finally {
+      setDownloading(false)
+    }
+  }
+
   const getCategoryIcon = (category: string) => {
     switch (category) {
       case 'PHOTO_ALBUM': return FileImage
@@ -510,6 +588,16 @@ export default function AlbumDetailPage() {
             </div>
           </div>
           <div className="flex items-center gap-2">
+            {settings?.bulkDownloadEnabled !== false && albumImages.length > 0 && (
+              <button
+                onClick={handleDownloadAll}
+                disabled={downloading}
+                className="flex items-center gap-2 px-4 py-2 border border-border rounded-lg hover:bg-muted transition-colors"
+              >
+                {downloading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Package className="w-4 h-4" />}
+                Download All
+              </button>
+            )}
             <Link
               href={`/projects/${projectId}/upload?albumId=${albumId}`}
               className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:opacity-90"
@@ -785,6 +873,16 @@ export default function AlbumDetailPage() {
                   
                   {selectedImages.length > 0 && (
                     <div className="flex items-center gap-2">
+                      {settings?.downloadEnabled !== false && (
+                        <button
+                          onClick={handleBulkDownload}
+                          disabled={downloading}
+                          className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm disabled:opacity-50"
+                        >
+                          {downloading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+                          Download
+                        </button>
+                      )}
                       <button
                         onClick={openMoveModal}
                         className="flex items-center gap-1.5 px-3 py-1.5 bg-primary text-white rounded-lg hover:bg-primary/90 text-sm"
