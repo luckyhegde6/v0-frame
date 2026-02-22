@@ -65,6 +65,10 @@ model Image {
   jobs        Job[]
   projectImages ProjectImage[]
   albumImages AlbumImage[]
+  detectedFaces DetectedFace[]
+  detectedObjects DetectedObject[]
+  embedding      ImageEmbedding?
+  favorites      UserFavorite[]
   
   // Timestamps
   createdAt DateTime    @default(now())
@@ -144,9 +148,11 @@ model User {
   auditLogs               AuditLog[]
   grantedProjectAccess   ClientProjectAccess[] @relation("GrantedByRelation")
   grantedAlbumAccess     ClientAlbumAccess[]   @relation("GrantedByAlbumRelation")
+  favorites              UserFavorite[]
+  proRequests            ProRequest[]
 
   createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  updatedAt     DateTime @updatedAt
 }
 
 model VerificationToken {
@@ -155,6 +161,40 @@ model VerificationToken {
   expires    DateTime
 
   @@unique([identifier, token])
+}
+
+// Phase 4: PRO User Requests
+model ProRequest {
+  id          String   @id @default(cuid())
+  type        String   // PROJECT_EXPORT_REQUEST, THUMBNAIL_REGENERATION, etc.
+  status      String   @default("PENDING") // PENDING, IN_PROGRESS, COMPLETED, FAILED
+  
+  title       String
+  description String?
+  payload     Json?
+  
+  // Requester
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  // Optional project/album context
+  projectId   String?
+  project     Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  albumId     String?
+  album       Album?   @relation(fields: [albumId], references: [id], onDelete: SetNull)
+  
+  // Admin response
+  adminNotes  String?
+  completedAt DateTime?
+  completedBy String?
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([userId])
+  @@index([type])
+  @@index([status])
+  @@index([createdAt])
 }
 
 // Phase 4: Professional Projects
@@ -183,7 +223,8 @@ model Project {
   shareTokens    ShareToken[]
   accessList     ProjectAccess[]
   clientAccess   ClientProjectAccess[]
-  albums        Album[]
+  albums         Album[]
+  proRequests    ProRequest[]
   
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
@@ -263,6 +304,8 @@ model Album {
   albumImages AlbumImage[] // Legacy junction table for backwards compatibility
   settings    AlbumSettings?
   clientAccess ClientAlbumAccess[]
+  faceGroups  FaceGroup[]
+  proRequests ProRequest[]
   
   coverImage  String?
   
@@ -460,6 +503,9 @@ enum AuditAction {
   JOB_STARTED              // Job started processing
   JOB_COMPLETED            // Job completed successfully
   JOB_FAILED              // Job failed
+  JOB_RETRY               // Job manually retried by admin
+  JOB_CANCELLED           // Job manually cancelled by admin
+  JOB_FORCE_RUN           // Job force-started by admin
   
   // ============================================
   // CLIENT ACCESS ACTIONS
@@ -493,6 +539,21 @@ enum AuditAction {
   // ============================================
   SYSTEM_CONFIG_CHANGED    // System configuration changed
   BULK_OPERATION           // Bulk operation performed (admin)
+  
+  // ============================================
+  // DOWNLOAD ACTIONS
+  // ============================================
+  IMAGE_DOWNLOADED         // Single image downloaded
+  ALBUM_DOWNLOADED         // Album ZIP downloaded
+  
+  // ============================================
+  // PRO REQUEST ACTIONS
+  // ============================================
+  PROJECT_EXPORT_REQUESTED // PRO user requested project export
+  PRO_REQUEST_SUBMITTED    // PRO user submitted request to admin
+  TASK_REQUEST_SUBMITTED   // Admin task request submitted
+  FACE_RECOGNITION_REQUESTED  // Face recognition requested
+  WATERMARK_REQUESTED      // Watermark settings change request
 }
 
 // Audit Log
@@ -580,6 +641,90 @@ model Notification {
   @@index([createdAt])
 }
 
+// Password Reset Management
+model PasswordReset {
+  id          String   @id @default(cuid())
+  email       String
+  token       String   @unique
+  tokenExpires DateTime
+  hint        String?  // Hint provided by admin
+  
+  // Reset status
+  status      String   @default("PENDING") // PENDING, COMPLETED, EXPIRED
+  
+  // For admin to set password directly
+  newPassword String?  // Admin-set password (encrypted)
+  isMagicLink Boolean  @default(false) // If true, user sets own password
+  
+  // Request info
+  requestedBy String?  // IP address or identifier
+  completedAt DateTime?
+  completedBy String?  // User who completed the reset
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([email])
+  @@index([token])
+  @@index([status])
+  @@index([createdAt])
+}
+
+// Public Access Request (from anonymous users)
+model PublicAccessRequest {
+  id          String   @id @default(cuid())
+  email       String
+  name        String
+  company     String?
+  
+  // Request type
+  accessType  String   // USER, CLIENT, PRO
+  
+  // Details
+  message     String?
+  
+  // Status
+  status      String   @default("PENDING") // PENDING, APPROVED, REJECTED
+  
+  // Admin response
+  adminNotes  String?
+  processedAt DateTime?
+  processedBy String?
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([email])
+  @@index([status])
+  @@index([accessType])
+  @@index([createdAt])
+}
+
+// Public Query (from anonymous users)
+model PublicQuery {
+  id          String   @id @default(cuid())
+  email       String
+  name        String
+  subject     String
+  
+  // Query details
+  message     String?
+  
+  // Status
+  status      String   @default("PENDING") // PENDING, ANSWERED, CLOSED
+  
+  // Admin response
+  adminNotes  String?
+  answeredAt  DateTime?
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([email])
+  @@index([status])
+  @@index([createdAt])
+}
+
 enum NotificationStatus {
   UNREAD
   READ
@@ -637,6 +782,11 @@ enum TaskType {
   // Share operations
   SHARE_REQUEST
   FACE_RECOGNITION
+  
+  // PRO Request operations
+  PRO_EXPORT_REQUEST
+  THUMBNAIL_REGENERATION
+  WATERMARK_ENABLE
 }
 
 enum TaskStatus {
@@ -663,6 +813,10 @@ enum NotificationType {
   QUOTA_EXCEEDED
   SYSTEM_ERROR
   ACCESS_REQUEST
+  PASSWORD_RESET_REQUEST
+  PASSWORD_RESET_COMPLETED
+  PUBLIC_ACCESS_REQUEST
+  PUBLIC_QUERY
 }
 
 // Phase 1 & 2: Image Lifecycle States
@@ -712,4 +866,132 @@ enum JobStatus {
   RUNNING
   COMPLETED
   FAILED
+  CANCELLED
+}
+
+// Phase 6: Face Recognition & AI Detection Models
+
+// Detected Face in an image
+model DetectedFace {
+  id          String   @id @default(cuid())
+  imageId     String
+  image       Image    @relation(fields: [imageId], references: [id], onDelete: Cascade)
+  
+  // Face group (same person)
+  faceGroupId String?
+  faceGroup   FaceGroup? @relation(fields: [faceGroupId], references: [id], onDelete: SetNull)
+  
+  // Bounding box (normalized 0-1)
+  x           Float
+  y           Float
+  width       Float
+  height      Float
+  
+  // Embedding vector (stored as JSON array of floats)
+  embedding   Json?
+  
+  // Confidence score
+  confidence  Float
+  
+  // Metadata
+  age         Int?
+  gender      String?
+  emotion     String?
+  
+  createdAt   DateTime @default(now())
+  
+  @@index([imageId])
+  @@index([faceGroupId])
+}
+
+// Group of similar faces (same person)
+model FaceGroup {
+  id          String   @id @default(cuid())
+  albumId     String?
+  album       Album?   @relation(fields: [albumId], references: [id], onDelete: Cascade)
+  
+  // Representative face
+  label       String?  // User-provided label (e.g., "John Doe")
+  coverFaceId String?
+  
+  // Auto-generated name suggestion
+  suggestedName String?
+  
+  // Count
+  faceCount   Int      @default(0)
+  
+  faces       DetectedFace[]
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@index([albumId])
+}
+
+// Generic object detection (products, pets, venues, etc.)
+model DetectedObject {
+  id          String   @id @default(cuid())
+  imageId     String
+  image       Image    @relation(fields: [imageId], references: [id], onDelete: Cascade)
+  
+  // Detection type
+  type        String   // FACE, PET, VENUE, PRODUCT, OBJECT, LANDMARK
+  label       String   // e.g., "Golden Retriever", "Wedding Venue", "iPhone"
+  
+  // Bounding box
+  x           Float
+  y           Float
+  width       Float
+  height      Float
+  
+  // Confidence
+  confidence  Float
+  
+  // Embedding for similarity search
+  embedding   Json?
+  
+  createdAt   DateTime @default(now())
+  
+  @@index([imageId])
+  @@index([type])
+  @@index([label])
+}
+
+// Vector embedding for semantic search (pgvector)
+model ImageEmbedding {
+  id          String   @id @default(cuid())
+  imageId     String   @unique
+  image       Image    @relation(fields: [imageId], references: [id], onDelete: Cascade)
+  
+  // Embedding vector (stored as JSON, will use pgvector in production)
+  embedding   Json
+  
+  // Model used for embedding
+  model       String   @default("clip-vit-base-patch32")
+  
+  // Caption/description
+  caption     String?
+  
+  // Tags from AI
+  tags        Json?
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@index([imageId])
+}
+
+// User favorites for images
+model UserFavorite {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  imageId   String
+  image     Image    @relation(fields: [imageId], references: [id], onDelete: Cascade)
+  
+  createdAt DateTime @default(now())
+  
+  @@unique([userId, imageId])
+  @@index([userId])
+  @@index([imageId])
 }

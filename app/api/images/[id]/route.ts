@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/prisma'
-import fs from 'fs'
+import fs from 'fs/promises'
 import path from 'path'
+import os from 'os'
+import { retrieveFile, USE_SUPABASE_STORAGE, BUCKETS, getFileUrl } from '@/lib/storage'
 
 export async function GET(
     request: NextRequest,
@@ -11,6 +13,7 @@ export async function GET(
 
     const image = await prisma.image.findUnique({
         where: { id },
+        include: { album: true }
     })
 
     if (!image || !image.tempPath) {
@@ -18,7 +21,51 @@ export async function GET(
     }
 
     try {
-        const fileBuffer = fs.readFileSync(image.tempPath)
+        let localPath: string | null = null
+
+        if (USE_SUPABASE_STORAGE && image.tempPath.includes('/')) {
+            const [bucket, ...pathParts] = image.tempPath.split('/')
+            const storagePath = pathParts.join('/')
+            
+            const bucketName = bucket as keyof typeof BUCKETS
+            if (Object.values(BUCKETS).includes(bucketName as any)) {
+                localPath = await retrieveFile({
+                    bucket: bucketName as any,
+                    path: storagePath,
+                })
+            }
+        }
+
+        if (!localPath) {
+            try {
+                await fs.access(image.tempPath)
+                localPath = image.tempPath
+            } catch {
+                const extension = image.tempPath.split('.').pop() || 'jpg'
+                const possiblePaths = [
+                    path.join(process.cwd(), 'storage', 'user', image.userId, 'Gallery', 'images', `${id}.${extension}`),
+                    path.join(os.tmpdir(), 'v0-frame', 'storage', 'user-gallery', image.userId, 'Gallery', 'images', `${id}.${extension}`),
+                    path.join(process.cwd(), 'user-gallery', image.userId, 'Gallery', 'images', `${id}.${extension}`),
+                ]
+
+                for (const tryPath of possiblePaths) {
+                    try {
+                        await fs.access(tryPath)
+                        localPath = tryPath
+                        break
+                    } catch {
+                        continue
+                    }
+                }
+            }
+        }
+
+        if (!localPath) {
+            console.error(`Image file not found for id ${id}, tempPath: ${image.tempPath}`)
+            return new NextResponse('Image file not found', { status: 404 })
+        }
+
+        const fileBuffer = await fs.readFile(localPath)
         return new NextResponse(fileBuffer, {
             headers: {
                 'Content-Type': image.mimeType,

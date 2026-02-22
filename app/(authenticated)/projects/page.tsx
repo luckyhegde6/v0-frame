@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState, useRef } from 'react'
-import { Folder, Plus, MoreVertical, Pencil, Trash2, Share2, Image, Loader2, ArrowLeft, Search, Copy, QrCode, X, ExternalLink, Settings, FolderOpen } from 'lucide-react'
+import { Folder, Plus, MoreVertical, Pencil, Trash2, Share2, Image, Loader2, ArrowLeft, Search, Copy, QrCode, X, ExternalLink, Settings, FolderOpen, Package, CheckCircle } from 'lucide-react'
 import Link from 'next/link'
 import { handleApiError, showSuccess, showWarning } from '@/lib/error-handler'
 import QRCode from 'qrcode'
@@ -16,6 +16,7 @@ interface Project {
   coverImage?: string | null
   imageCount: number
   albumCount?: number
+  albums?: { id: string; name: string }[]
   storageQuota: string
   storageUsed: string
 }
@@ -36,6 +37,7 @@ export default function ProjectsPage() {
   const [loading, setLoading] = useState(true)
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [showShareModal, setShowShareModal] = useState(false)
+  const [showExportModal, setShowExportModal] = useState(false)
   const [newProjectName, setNewProjectName] = useState('')
   const [newProjectDesc, setNewProjectDesc] = useState('')
   const [newEventName, setNewEventName] = useState('')
@@ -48,6 +50,10 @@ export default function ProjectsPage() {
   const [qrCodeUrl, setQrCodeUrl] = useState<string>('')
   const [copied, setCopied] = useState(false)
   const [sharingProjectId, setSharingProjectId] = useState<string | null>(null)
+  const [exportingProject, setExportingProject] = useState<Project | null>(null)
+  const [exportAll, setExportAll] = useState(true)
+  const [selectedAlbumId, setSelectedAlbumId] = useState('')
+  const [exporting, setExporting] = useState(false)
   const qrCanvasRef = useRef<HTMLCanvasElement>(null)
 
   const fetchProjects = async () => {
@@ -179,6 +185,61 @@ export default function ProjectsPage() {
     }
   }
 
+  const openExportModal = async (project: Project) => {
+    setExportingProject(project)
+    setExportAll(true)
+    setSelectedAlbumId('')
+    
+    if (!project.albums) {
+      try {
+        const response = await fetch(`/api/projects/${project.id}?includeAlbums=true`)
+        if (response.ok) {
+          const data = await response.json()
+          setExportingProject({ ...project, albums: data.project?.albums || [] })
+        }
+      } catch (error) {
+        console.error('Failed to fetch albums:', error)
+      }
+    }
+    
+    setShowExportModal(true)
+  }
+
+  const handleExportRequest = async () => {
+    if (!exportingProject) return
+
+    setExporting(true)
+    try {
+      const response = await fetch('/api/requests', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: 'PROJECT_EXPORT_REQUEST',
+          title: `Export: ${exportingProject.name}`,
+          description: exportAll ? 'Export all albums' : `Export selected album`,
+          payload: {
+            projectId: exportingProject.id,
+            albumId: exportAll ? null : selectedAlbumId,
+            exportAll
+          }
+        })
+      })
+
+      if (!response.ok) {
+        const data = await response.json()
+        throw new Error(data.error || 'Failed to submit export request')
+      }
+
+      showSuccess('Export request submitted! We will process it shortly.')
+      setShowExportModal(false)
+      setExportingProject(null)
+    } catch (error) {
+      handleApiError(error, 'ExportRequest')
+    } finally {
+      setExporting(false)
+    }
+  }
+
   const formatBytes = (bytes: number) => {
     if (bytes === 0) return '0 B'
     const k = 1024
@@ -261,23 +322,33 @@ export default function ProjectsPage() {
                   </Link>
                   <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                     <button 
+                      onClick={() => openExportModal(project)}
+                      className="p-2 hover:bg-muted rounded-lg transition-colors"
+                      title="Request Export"
+                    >
+                      <Package className="w-4 h-4 text-muted-foreground" />
+                    </button>
+                    <button 
                       onClick={() => {
                         setCreatedProject(project)
                         createShareLink(project.id)
                       }}
                       className="p-2 hover:bg-muted rounded-lg transition-colors"
+                      title="Share"
                     >
                       <Share2 className="w-4 h-4 text-muted-foreground" />
                     </button>
                     <Link 
                       href={`/projects/${project.id}?tab=settings`}
                       className="p-2 hover:bg-muted rounded-lg transition-colors"
+                      title="Settings"
                     >
                       <Settings className="w-4 h-4 text-muted-foreground" />
                     </Link>
                     <button 
                       onClick={() => handleDeleteProject(project.id, project.name)}
                       className="p-2 hover:bg-muted rounded-lg transition-colors"
+                      title="Delete"
                     >
                       <Trash2 className="w-4 h-4 text-muted-foreground hover:text-red-500" />
                     </button>
@@ -475,6 +546,98 @@ export default function ProjectsPage() {
               <p className="text-xs text-muted-foreground text-center mt-4">
                 Share this QR code or link with your clients to let them view the project.
               </p>
+            </div>
+          </div>
+        )}
+
+        {showExportModal && exportingProject && (
+          <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <div className="bg-card border border-border rounded-2xl p-6 w-full max-w-md">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-xl font-bold">Request Project Export</h2>
+                <button
+                  onClick={() => setShowExportModal(false)}
+                  className="p-2 hover:bg-muted rounded-lg transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              
+              <div className="mb-6">
+                <p className="text-muted-foreground mb-2">
+                  Request an export of <strong>{exportingProject.name}</strong>
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  We will prepare a ZIP file for download. You will be notified when it's ready.
+                </p>
+              </div>
+
+              {exportingProject.albums && exportingProject.albums.length > 0 && (
+                <div className="space-y-4 mb-6">
+                  <div className="flex items-center gap-4">
+                    <label className="flex items-center gap-2">
+                      <input
+                        type="radio"
+                        checked={exportAll}
+                        onChange={() => setExportAll(true)}
+                        className="w-4 h-4"
+                      />
+                      <span className="text-sm">All Albums</span>
+                    </label>
+                    <label className="flex items-center gap-2">
+                      <input
+                        type="radio"
+                        checked={!exportAll}
+                        onChange={() => setExportAll(false)}
+                        className="w-4 h-4"
+                      />
+                      <span className="text-sm">Selected Album</span>
+                    </label>
+                  </div>
+
+                  {!exportAll && (
+                    <div>
+                      <label className="block text-sm font-medium mb-2">Select Album</label>
+                      <select
+                        value={selectedAlbumId}
+                        onChange={(e) => setSelectedAlbumId(e.target.value)}
+                        className="w-full px-3 py-2 bg-background border border-border rounded-lg"
+                      >
+                        <option value="">Select album...</option>
+                        {exportingProject.albums.map(a => (
+                          <option key={a.id} value={a.id}>{a.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowExportModal(false)}
+                  className="flex-1 px-4 py-2 border border-border rounded-lg hover:bg-muted transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleExportRequest}
+                  disabled={exporting || (!exportAll && !selectedAlbumId)}
+                  className="flex-1 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:opacity-90 transition-opacity disabled:opacity-50 flex items-center justify-center gap-2"
+                >
+                  {exporting ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Submitting...
+                    </>
+                  ) : (
+                    <>
+                      <Package className="w-4 h-4" />
+                      Request Export
+                    </>
+                  )}
+                </button>
+              </div>
             </div>
           </div>
         )}

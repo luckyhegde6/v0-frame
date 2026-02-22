@@ -1,53 +1,7 @@
 import prisma from '@/lib/prisma'
-import { Prisma, Role } from '@prisma/client'
+import { Prisma, Role, AuditAction } from '@prisma/client'
 
-export type AuditAction =
-  // User actions
-  | 'USER_CREATED'
-  | 'USER_UPDATED'
-  | 'USER_DELETED'
-  | 'USER_ROLE_CHANGED'
-  | 'USER_LOGIN'
-  | 'USER_LOGOUT'
-  | 'USER_PASSWORD_CHANGED'
-  // Project actions
-  | 'PROJECT_CREATED'
-  | 'PROJECT_UPDATED'
-  | 'PROJECT_DELETED'
-  // Album actions
-  | 'ALBUM_CREATED'
-  | 'ALBUM_UPDATED'
-  | 'ALBUM_DELETED'
-  | 'ALBUM_IMAGE_ADDED'
-  | 'ALBUM_IMAGE_REMOVED'
-  // Image actions
-  | 'IMAGE_UPLOADED'
-  | 'IMAGE_DELETED'
-  | 'IMAGE_MOVED'
-  | 'IMAGE_COPIED'
-  | 'IMAGE_CLONED'
-  // Job actions
-  | 'JOB_CREATED'
-  | 'JOB_STARTED'
-  | 'JOB_COMPLETED'
-  | 'JOB_FAILED'
-  // Client access actions
-  | 'CLIENT_ACCESS_GRANTED'
-  | 'CLIENT_ACCESS_REVOKED'
-  | 'CLIENT_ACCESS_MODIFIED'
-  // Share link actions
-  | 'SHARE_LINK_CREATED'
-  | 'SHARE_LINK_REVOKED'
-  | 'SHARE_LINK_ACCESSED'
-  // Settings actions
-  | 'SETTINGS_CHANGED'
-  | 'ALBUM_SETTINGS_CHANGED'
-  // Storage actions
-  | 'STORAGE_QUOTA_CHANGED'
-  | 'STORAGE_WARNING'
-  // Admin actions
-  | 'SYSTEM_CONFIG_CHANGED'
-  | 'BULK_OPERATION'
+export type { AuditAction }
 
 interface AuditLogParams {
   action: AuditAction
@@ -128,6 +82,12 @@ function generateDescription(
       return `Job completed successfully`
     case 'JOB_FAILED':
       return `Job failed${metadata?.error ? `: ${metadata.error}` : ''}`
+    case 'JOB_RETRY':
+      return `Job manually retried by admin (attempt ${metadata?.attempt || 1})`
+    case 'JOB_CANCELLED':
+      return `Job manually cancelled by admin`
+    case 'JOB_FORCE_RUN':
+      return `Job force-started by admin`
     case 'CLIENT_ACCESS_GRANTED':
       return `Access granted to user with "${metadata?.accessLevel || 'READ'}" level`
     case 'CLIENT_ACCESS_REVOKED':
@@ -150,6 +110,22 @@ function generateDescription(
       return `System configuration changed`
     case 'BULK_OPERATION':
       return `Bulk operation: ${metadata?.operation || 'Unknown'} (${metadata?.affectedCount || 0} affected)`
+    case 'IMAGE_DOWNLOADED':
+      return `Image downloaded`
+    case 'ALBUM_DOWNLOADED':
+      return `Album downloaded (${metadata?.imageCount || 0} images)`
+    case 'PRO_REQUEST_SUBMITTED':
+      return `PRO request submitted: ${metadata?.requestType || 'Unknown'}`
+    case 'PROJECT_EXPORT_REQUESTED':
+      return `Project export requested`
+    case 'FACE_RECOGNITION_REQUESTED':
+      return `Face recognition requested for album`
+    case 'WATERMARK_REQUESTED':
+      return `Watermark settings change requested`
+    case 'SHARE_LINK_REQUESTED':
+      return `Share link requested`
+    default:
+      return `${action} performed on ${entityType}`
   }
 }
 
@@ -477,6 +453,36 @@ export async function logJobFailed(jobId: string, userId: string, error?: string
   })
 }
 
+export async function logJobRetry(jobId: string, userId: string, attempt: number, metadata?: Record<string, unknown>) {
+  return logAuditEvent({
+    action: 'JOB_RETRY',
+    entityType: 'Job',
+    entityId: jobId,
+    userId,
+    metadata: { ...metadata, attempt }
+  })
+}
+
+export async function logJobCancelled(jobId: string, userId: string, metadata?: Record<string, unknown>) {
+  return logAuditEvent({
+    action: 'JOB_CANCELLED',
+    entityType: 'Job',
+    entityId: jobId,
+    userId,
+    metadata
+  })
+}
+
+export async function logJobForceRun(jobId: string, userId: string, metadata?: Record<string, unknown>) {
+  return logAuditEvent({
+    action: 'JOB_FORCE_RUN',
+    entityType: 'Job',
+    entityId: jobId,
+    userId,
+    metadata
+  })
+}
+
 // ============================================
 // CLIENT ACCESS AUDIT LOGS
 // ============================================
@@ -614,5 +620,73 @@ export async function logBulkOperation(userId: string, operation: string, affect
     entityId: 'bulk',
     userId,
     metadata: { ...metadata, operation, affectedCount }
+  })
+}
+
+// ============================================
+// DOWNLOAD AUDIT LOGS
+// ============================================
+
+export async function logImageDownloaded(imageId: string, userId: string, metadata?: Record<string, unknown>) {
+  return logAuditEvent({
+    action: 'IMAGE_DOWNLOADED',
+    entityType: 'Image',
+    entityId: imageId,
+    userId,
+    metadata
+  })
+}
+
+export async function logAlbumDownloaded(albumId: string, userId: string, imageCount: number, metadata?: Record<string, unknown>) {
+  return logAuditEvent({
+    action: 'ALBUM_DOWNLOADED',
+    entityType: 'Album',
+    entityId: albumId,
+    userId,
+    metadata: { ...metadata, imageCount }
+  })
+}
+
+// ============================================
+// PRO REQUEST AUDIT LOGS
+// ============================================
+
+export async function logProRequestSubmitted(requestId: string, userId: string, requestType: string, metadata?: Record<string, unknown>) {
+  return logAuditEvent({
+    action: 'PRO_REQUEST_SUBMITTED',
+    entityType: 'ProRequest',
+    entityId: requestId,
+    userId,
+    metadata: { ...metadata, requestType }
+  })
+}
+
+export async function logProjectExportRequested(projectId: string, userId: string, metadata?: Record<string, unknown>) {
+  return logAuditEvent({
+    action: 'PROJECT_EXPORT_REQUESTED',
+    entityType: 'Project',
+    entityId: projectId,
+    userId,
+    metadata
+  })
+}
+
+export async function logFaceRecognitionRequested(albumId: string, userId: string, metadata?: Record<string, unknown>) {
+  return logAuditEvent({
+    action: 'FACE_RECOGNITION_REQUESTED',
+    entityType: 'Album',
+    entityId: albumId,
+    userId,
+    metadata
+  })
+}
+
+export async function logWatermarkRequested(albumId: string, userId: string, metadata?: Record<string, unknown>) {
+  return logAuditEvent({
+    action: 'WATERMARK_REQUESTED',
+    entityType: 'Album',
+    entityId: albumId,
+    userId,
+    metadata
   })
 }

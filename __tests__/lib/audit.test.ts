@@ -49,6 +49,12 @@ describe('Audit Module', () => {
       expect(typeof audit.logClientAccessRevoked).toBe('function')
       expect(typeof audit.logShareLinkCreated).toBe('function')
       expect(typeof audit.logShareLinkAccessed).toBe('function')
+      expect(typeof audit.logImageDownloaded).toBe('function')
+      expect(typeof audit.logAlbumDownloaded).toBe('function')
+      expect(typeof audit.logProRequestSubmitted).toBe('function')
+      expect(typeof audit.logProjectExportRequested).toBe('function')
+      expect(typeof audit.logFaceRecognitionRequested).toBe('function')
+      expect(typeof audit.logWatermarkRequested).toBe('function')
     })
   })
 
@@ -142,6 +148,182 @@ describe('Audit Module', () => {
       
       // Should not throw
       await expect(audit.logUserLogin('user-123')).resolves.toBeUndefined()
+    })
+  })
+
+  describe('logImageDownloaded', () => {
+    it('should log image download', async () => {
+      const audit = await import('@/lib/audit')
+      const prisma = await import('@/lib/prisma')
+      
+      vi.mocked(prisma.default.user.findUnique).mockResolvedValue({
+        email: 'user@example.com',
+        name: 'User',
+        role: 'USER',
+      } as any)
+      
+      vi.mocked(prisma.default.auditLog.create).mockResolvedValue({ id: 'log-1' } as any)
+      
+      await audit.logImageDownloaded('img-123', 'user-123')
+      
+      expect(prisma.default.auditLog.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            action: 'IMAGE_DOWNLOADED',
+            entityType: 'Image',
+            entityId: 'img-123',
+          })
+        })
+      )
+    })
+  })
+
+  describe('logAlbumDownloaded', () => {
+    it('should log album download with image count', async () => {
+      const audit = await import('@/lib/audit')
+      const prisma = await import('@/lib/prisma')
+      
+      vi.mocked(prisma.default.user.findUnique).mockResolvedValue({
+        email: 'user@example.com',
+        name: 'User',
+        role: 'USER',
+      } as any)
+      
+      vi.mocked(prisma.default.auditLog.create).mockResolvedValue({ id: 'log-1' } as any)
+      
+      await audit.logAlbumDownloaded('album-123', 'user-123', 50)
+      
+      expect(prisma.default.auditLog.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            action: 'ALBUM_DOWNLOADED',
+            entityType: 'Album',
+            entityId: 'album-123',
+            metadata: expect.objectContaining({
+              imageCount: 50
+            })
+          })
+        })
+      )
+    })
+  })
+
+  describe('logProRequestSubmitted', () => {
+    it('should log PRO request submission', async () => {
+      const audit = await import('@/lib/audit')
+      const prisma = await import('@/lib/prisma')
+      
+      vi.mocked(prisma.default.user.findUnique).mockResolvedValue({
+        email: 'pro@example.com',
+        name: 'PRO User',
+        role: 'PRO',
+      } as any)
+      
+      vi.mocked(prisma.default.auditLog.create).mockResolvedValue({ id: 'log-1' } as any)
+      
+      await audit.logProRequestSubmitted('req-123', 'user-123', 'PROJECT_EXPORT_REQUEST', {
+        projectId: 'proj-456',
+        title: 'Export My Project'
+      })
+      
+      expect(prisma.default.auditLog.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            action: 'PRO_REQUEST_SUBMITTED',
+            entityType: 'ProRequest',
+            entityId: 'req-123',
+            metadata: expect.objectContaining({
+              requestType: 'PROJECT_EXPORT_REQUEST',
+              projectId: 'proj-456'
+            })
+          })
+        })
+      )
+    })
+  })
+
+  describe('logProjectExportRequested', () => {
+    it('should log project export request', async () => {
+      const audit = await import('@/lib/audit')
+      const prisma = await import('@/lib/prisma')
+      
+      vi.mocked(prisma.default.user.findUnique).mockResolvedValue({
+        email: 'pro@example.com',
+        name: 'PRO User',
+        role: 'PRO',
+      } as any)
+      
+      vi.mocked(prisma.default.auditLog.create).mockResolvedValue({ id: 'log-1' } as any)
+      
+      await audit.logProjectExportRequested('proj-123', 'user-123', {
+        requestId: 'req-456'
+      })
+      
+      expect(prisma.default.auditLog.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            action: 'PROJECT_EXPORT_REQUESTED',
+            entityType: 'Project',
+            entityId: 'proj-123'
+          })
+        })
+      )
+    })
+  })
+
+  describe('logFaceRecognitionRequested', () => {
+    it('should log face recognition request', async () => {
+      const audit = await import('@/lib/audit')
+      const prisma = await import('@/lib/prisma')
+      
+      vi.mocked(prisma.default.user.findUnique).mockResolvedValue({
+        email: 'pro@example.com',
+        name: 'PRO User',
+        role: 'PRO',
+      } as any)
+      
+      vi.mocked(prisma.default.auditLog.create).mockResolvedValue({ id: 'log-1' } as any)
+      
+      await audit.logFaceRecognitionRequested('album-123', 'user-123')
+      
+      expect(prisma.default.auditLog.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            action: 'FACE_RECOGNITION_REQUESTED',
+            entityType: 'Album',
+            entityId: 'album-123'
+          })
+        })
+      )
+    })
+  })
+
+  describe('logWatermarkRequested', () => {
+    it('should log watermark request', async () => {
+      const audit = await import('@/lib/audit')
+      const prisma = await import('@/lib/prisma')
+      
+      vi.mocked(prisma.default.user.findUnique).mockResolvedValue({
+        email: 'pro@example.com',
+        name: 'PRO User',
+        role: 'PRO',
+      } as any)
+      
+      vi.mocked(prisma.default.auditLog.create).mockResolvedValue({ id: 'log-1' } as any)
+      
+      await audit.logWatermarkRequested('album-123', 'user-123', {
+        watermarkText: 'My Brand'
+      })
+      
+      expect(prisma.default.auditLog.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            action: 'WATERMARK_REQUESTED',
+            entityType: 'Album',
+            entityId: 'album-123'
+          })
+        })
+      )
     })
   })
 })

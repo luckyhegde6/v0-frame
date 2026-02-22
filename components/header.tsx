@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import { useEffect, useState } from 'react'
-import { ChevronRight, Home, Shield, Image, Upload, ArrowLeft, FolderOpen, Play, BookOpen, Settings, Loader2, Layers, Star, Share2, User, FileText, Users, HardDrive } from 'lucide-react'
+import { ChevronRight, Home, Shield, Image, Upload, ArrowLeft, FolderOpen, Play, BookOpen, Settings, Loader2, Layers, Star, Share2, User, FileText, Users, HardDrive, ListChecks, HelpCircle, Info, Key } from 'lucide-react'
 import { UserNav } from './user-nav'
 import { NotificationBell } from './notification-bell'
 import { cn } from '@/lib/utils'
@@ -105,6 +105,38 @@ export function Header() {
                 <span className="text-primary">FRAME</span>
               </span>
             </Link>
+
+            {/* Public navigation for unauthenticated users */}
+            {!session?.user && (
+              <nav className="hidden md:flex items-center gap-6">
+                <Link
+                  href="/about"
+                  className={cn(
+                    "flex items-center gap-2 text-sm font-medium transition-colors hover:text-primary",
+                    pathname === '/about' ? "text-primary" : "text-muted-foreground"
+                  )}
+                >
+                  <Info className="w-4 h-4" />
+                  About
+                </Link>
+                <Link
+                  href="/help"
+                  className={cn(
+                    "flex items-center gap-2 text-sm font-medium transition-colors hover:text-primary",
+                    pathname === '/help' ? "text-primary" : "text-muted-foreground"
+                  )}
+                >
+                  <HelpCircle className="w-4 h-4" />
+                  Help
+                </Link>
+                <Link
+                  href="/auth/signin"
+                  className="flex items-center gap-2 text-sm font-medium px-3 py-1.5 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
+                >
+                  Sign In
+                </Link>
+              </nav>
+            )}
 
             <nav className="hidden md:flex items-center gap-6">
               {/* USER: Gallery and Upload only */}
@@ -255,6 +287,16 @@ export function Header() {
                     Audit
                   </Link>
                   <Link
+                    href="/admin/requests"
+                    className={cn(
+                      "flex items-center gap-2 text-sm font-medium transition-colors hover:text-primary",
+                      pathname.startsWith('/admin/requests') ? "text-primary" : "text-muted-foreground"
+                    )}
+                  >
+                    <ListChecks className="w-4 h-4" />
+                    Requests
+                  </Link>
+                  <Link
                     href="/admin/storage"
                     className={cn(
                       "flex items-center gap-2 text-sm font-medium transition-colors hover:text-primary",
@@ -263,6 +305,16 @@ export function Header() {
                   >
                     <HardDrive className="w-4 h-4" />
                     Storage
+                  </Link>
+                  <Link
+                    href="/admin/password-resets"
+                    className={cn(
+                      "flex items-center gap-2 text-sm font-medium transition-colors hover:text-primary",
+                      pathname.startsWith('/admin/password-resets') ? "text-primary" : "text-muted-foreground"
+                    )}
+                  >
+                    <Key className="w-4 h-4" />
+                    Password Resets
                   </Link>
                 </>
               )}
