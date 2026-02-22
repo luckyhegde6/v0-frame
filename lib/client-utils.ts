@@ -27,7 +27,6 @@ export function getAssetUrl(relativePath: string): string {
   
   const urlPath = relativePath
     .replace(/^\/tmp\/storage\//, '/storage/')
-    .replace(/^\/storage\//, '/storage/')
   
   return urlPath
 }
