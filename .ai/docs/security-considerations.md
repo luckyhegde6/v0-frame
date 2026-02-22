@@ -207,7 +207,7 @@ module.exports = {
 # Required
 DATABASE_URL=postgresql://...
 AUTH_SECRET=<32-char-random-string>
-ADMIN_EMAIL=admin@frame.app
+ADMIN_EMAIL=admin2@frame.app
 ADMIN_PASSWORD=<strong-password>
 SETUP_SECRET=<32-char-random-string>
 
@@ -308,7 +308,7 @@ All significant actions are logged:
 
 ### Contact
 
-- **Security Contact**: admin@frame.app
+- **Security Contact**: admin2@frame.app
 - **Emergency**: Implement emergency shutdown procedure
 
 ---

@@ -83,7 +83,7 @@ describe('Audit Module', () => {
       const prisma = await import('@/lib/prisma')
       
       vi.mocked(prisma.default.user.findUnique).mockResolvedValue({
-        email: 'admin@example.com',
+        email: 'admin2@example.com',
         name: 'Admin',
         role: 'ADMIN',
       } as any)

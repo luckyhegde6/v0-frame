@@ -226,12 +226,12 @@ export async function GET(request: NextRequest) {
     
     try {
       const storageByType = await prisma.image.groupBy({
-        by: ['storageType' as never],
+        by: ['storageType'],
         _sum: { sizeBytes: true },
         _count: { id: true }
       })
       
-      byType = (storageByType as Array<{ storageType: string; _sum: { sizeBytes: number | null }; _count: { id: number } }>).map(t => ({
+      byType = storageByType.map(t => ({
         type: t.storageType,
         sizeBytes: t._sum.sizeBytes || 0,
         sizeFormatted: formatBytes(t._sum.sizeBytes || 0),

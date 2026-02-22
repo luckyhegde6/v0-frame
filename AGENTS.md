@@ -19,8 +19,9 @@ pnpm local                  # Full local setup: docker + db + seed + dev
 
 # IMPORTANT: Always kill the dev server after debugging/testing
 # Run "pnpm dev" in background, then kill when done:
-#   Windows: taskkill /F /IM node.exe   OR   npx kill-port 3000
+#   Windows: npx kill-port 3000 (do NOT use taskkill /F /IM node.exe - it kills the agent itself!)
 #   Linux/Mac: pkill -f "next dev"      OR   npx kill-port 3000
+# IMPORTANT: The AI agent runs on http://127.0.0.1:4096/ - do NOT kill this process!
 # Failing to do so will cause port/lock conflicts:
 #   "Port 3000 is in use" / "Unable to acquire lock"
 
@@ -258,7 +259,7 @@ The application requires a SUPERADMIN account for administrative access. Two met
 pnpm db:ensure-admin
 
 # Production/CI with environment variables
-ADMIN_EMAIL="admin@example.com" ADMIN_PASSWORD="secure-pass" pnpm db:ensure-admin
+ADMIN_EMAIL="admin2@example.com" ADMIN_PASSWORD="secure-pass" pnpm db:ensure-admin
 ```
 
 #### Method 2: API Endpoint (For Vercel/serverless)
@@ -452,7 +453,48 @@ Use Memory MCP to:
 
 ### Supabase MCP for Database Operations
 
-Supabase MCP provides direct database access for querying and migrations:
+Supabase MCP provides direct database access for querying and migrations. Two options available:
+
+#### Option 1: Remote Supabase MCP (Recommended)
+Uses Supabase's hosted MCP server with OAuth authentication:
+
+```
+URL: https://mcp.supabase.com/mcp?project_ref=viuvufbhcscavvdfoqqn
+```
+
+Configure in `.ai/mcp/mcp-config.json`:
+```json
+{
+  "mcpServers": {
+    "supabase": {
+      "url": "https://mcp.supabase.com/mcp?project_ref=viuvufbhcscavvdfoqqn",
+      "enabled": true
+    }
+  }
+}
+```
+
+**Authentication**: Supabase MCP uses OAuth 2.1 - it will prompt for login when first connecting. Uses your Supabase account for authentication.
+
+#### Option 2: Local Postgres MCP
+For direct database connections without OAuth:
+
+```json
+{
+  "mcpServers": {
+    "postgres": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-postgres"],
+      "env": {
+        "DATABASE_URL": "postgresql://postgres:password@localhost:5432/frame?schema=public"
+      },
+      "enabled": true
+    }
+  }
+}
+```
+
+**Note**: For production Supabase, use the remote MCP option instead (see Option 1 above).
 
 | Tool | Purpose |
 |------|---------|

@@ -21,14 +21,14 @@ declare module 'next-auth' {
 
 import { DefaultSession } from 'next-auth'
 
-const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'admin@frame.app'
+const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'admin2@frame.app'
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'admin123'
 
 const DEMO_CREDENTIALS: Record<string, { password: string; role: Role; name: string }> = {
-  'admin@frame.app': { password: 'admin123', role: 'ADMIN', name: 'Admin User' },
-  'user@frame.app': { password: 'user123', role: 'USER', name: 'Regular User' },
-  'pro@frame.app': { password: 'pro123', role: 'PRO', name: 'Pro User' },
-  'client@frame.app': { password: 'client123', role: 'CLIENT', name: 'Client User' },
+  'admin2@frame.app': { password: 'admin123', role: 'ADMIN', name: 'Admin User' },
+  'user1@frame.app': { password: 'user123', role: 'USER', name: 'Regular User' },
+  'pro1@frame.app': { password: 'pro123', role: 'PRO', name: 'Pro User' },
+  'client1@frame.app': { password: 'client123', role: 'CLIENT', name: 'Client User' },
 }
 
 if (ADMIN_EMAIL && ADMIN_PASSWORD) {

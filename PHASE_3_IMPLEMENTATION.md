@@ -87,10 +87,10 @@ Pre-configured accounts for testing:
 
 | Email | Password | Role |
 |-------|----------|------|
-| admin@frame.app | admin123 | ADMIN |
-| user@frame.app | user123 | USER |
-| pro@frame.app | pro123 | PRO |
-| client@frame.app | client123 | CLIENT |
+| admin2@frame.app | admin123 | ADMIN |
+| user1@frame.app | user123 | USER |
+| pro1@frame.app | pro123 | PRO |
+| client1@frame.app | client123 | CLIENT |
 
 ---
 
