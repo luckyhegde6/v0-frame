@@ -74,7 +74,7 @@ export default function AdminProjectsPage() {
   }
 
   const handleAddUser = async () => {
-    if (!newEmail.trim() || !accessModalProject) return
+    if (!accessModalProject || !newEmail.trim()) return
     
     setAddingUser(true)
     try {
@@ -93,12 +93,13 @@ export default function AdminProjectsPage() {
         throw new Error(data.error || 'Failed to add user')
       }
 
-      setAccessList(prev => [...prev, {
-        userId: 'new-' + Date.now(),
-        userName: newEmail.trim(),
-        userEmail: newEmail.trim(),
-        accessLevel: newLevel
-      }])
+      // Refresh the access list from server to get the actual user ID
+      const projectResponse = await fetch(`/api/admin/projects?id=${accessModalProject.id}`)
+      if (projectResponse.ok) {
+        const projectData = await projectResponse.json()
+        setAccessList(projectData.project?.accessList || [])
+      }
+      
       setNewEmail('')
       setNewLevel('READ')
       showSuccess('User access added')

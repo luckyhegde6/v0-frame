@@ -24,12 +24,11 @@ if (!isLocal && !connectionString.includes('sslmode=')) {
 const poolConfig: any = { connectionString }
 
 // For remote connections, configure SSL to handle self-signed certificates
-// Node.js pg library requires this configuration to bypass certificate verification
+// Use proper SSL configuration instead of disabling global certificate validation
 if (!isLocal) {
-  poolConfig.ssl = true
-  // For self-signed certificates, we need to disable certificate verification
-  // Use process env to pass SSL settings to pg
-  process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0'
+  poolConfig.ssl = {
+    rejectUnauthorized: process.env.SKIP_SSL_VERIFICATION !== 'true'
+  }
 }
 
 const pool = new Pool(poolConfig)

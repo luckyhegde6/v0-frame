@@ -74,9 +74,11 @@ export async function PATCH(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { userId, name, email, role, password } = body
+    const { id, userId, name, email, role, password } = body
 
-    if (!userId) {
+    const targetUserId = id || userId
+
+    if (!targetUserId) {
       return NextResponse.json(
         { error: 'User ID is required' },
         { status: 400 }
@@ -84,7 +86,7 @@ export async function PATCH(request: NextRequest) {
     }
 
     const existingUser = await prisma.user.findUnique({
-      where: { id: userId }
+      where: { id: targetUserId }
     })
 
     if (!existingUser) {
@@ -105,7 +107,7 @@ export async function PATCH(request: NextRequest) {
     }
 
     const user = await prisma.user.update({
-      where: { id: userId },
+      where: { id: targetUserId },
       data: updateData
     })
 

@@ -1,7 +1,7 @@
 import { auth } from '@/lib/auth/auth'
 import { redirect } from 'next/navigation'
 import prisma from '@/lib/prisma'
-import { Shield, Users, Settings, Activity, FolderOpen, Play, BookOpen, HardDrive, FileText, Clock, AlertCircle, CheckCircle, XCircle, Ban, Bell, ListChecks, Key, KeyRound } from 'lucide-react'
+import { Shield, Users, Settings, Activity, FolderOpen, Play, BookOpen, HardDrive, FileText, Clock, AlertCircle, CheckCircle, XCircle, Ban, Bell, ListChecks, Key, KeyRound, Grid3X3, Tags, ScanFace } from 'lucide-react'
 import Link from 'next/link'
 import { QuickActions } from './components/quick-actions'
 
@@ -277,6 +277,30 @@ export default async function AdminPage() {
             </div>
             <h3 className="text-lg font-semibold mb-2">Password Resets</h3>
             <p className="text-muted-foreground text-sm">Manage password resets</p>
+          </Link>
+
+          <Link href="/admin/faces" className="p-6 bg-card border border-border rounded-lg hover:border-primary/50 transition-colors cursor-pointer">
+            <div className="w-12 h-12 rounded-lg bg-pink-500/10 flex items-center justify-center mb-4">
+              <ScanFace className="w-6 h-6 text-pink-500" />
+            </div>
+            <h3 className="text-lg font-semibold mb-2">Faces</h3>
+            <p className="text-muted-foreground text-sm">Manage detected faces</p>
+          </Link>
+
+          <Link href="/admin/tiles" className="p-6 bg-card border border-border rounded-lg hover:border-primary/50 transition-colors cursor-pointer">
+            <div className="w-12 h-12 rounded-lg bg-teal-500/10 flex items-center justify-center mb-4">
+              <Grid3X3 className="w-6 h-6 text-teal-500" />
+            </div>
+            <h3 className="text-lg font-semibold mb-2">Tiles</h3>
+            <p className="text-muted-foreground text-sm">Manage dashboard tiles</p>
+          </Link>
+
+          <Link href="/admin/classifications" className="p-6 bg-card border border-border rounded-lg hover:border-primary/50 transition-colors cursor-pointer">
+            <div className="w-12 h-12 rounded-lg bg-indigo-500/10 flex items-center justify-center mb-4">
+              <Tags className="w-6 h-6 text-indigo-500" />
+            </div>
+            <h3 className="text-lg font-semibold mb-2">Classifications</h3>
+            <p className="text-muted-foreground text-sm">Manage image classifications</p>
           </Link>
         </div>
 

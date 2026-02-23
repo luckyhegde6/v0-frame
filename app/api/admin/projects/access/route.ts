@@ -55,6 +55,22 @@ export async function PUT(request: NextRequest) {
       }
     }
 
+    // Verify users exist before adding
+    const userIdsToCheck = toAdd.map(a => a.userId)
+    const existingUsers = await prisma.user.findMany({
+      where: { id: { in: userIdsToCheck } },
+      select: { id: true }
+    })
+    const validUserIds = new Set(existingUsers.map(u => u.id))
+    
+    const invalidUsers = toAdd.filter(a => !validUserIds.has(a.userId))
+    if (invalidUsers.length > 0) {
+      return NextResponse.json({ 
+        error: `Users not found: ${invalidUsers.map(u => u.userId).join(', ')}. Please ensure these users are registered first.`,
+        invalidUserIds: invalidUsers.map(u => u.userId)
+      }, { status: 400 })
+    }
+
     await prisma.$transaction(async (tx) => {
       for (const access of toRemove) {
         await tx.projectAccess.delete({

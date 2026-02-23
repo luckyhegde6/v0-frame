@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Mail, MessageSquare, User, Users, Crown, Send, CheckCircle, Loader2, ArrowLeft } from 'lucide-react'
 import Link from 'next/link'
 
@@ -21,24 +21,55 @@ interface AccessFormData {
   message: string
 }
 
+const STORAGE_KEY_QUERY = 'help_form_query'
+const STORAGE_KEY_ACCESS = 'help_form_access'
+
 export default function HelpPage() {
   const [activeForm, setActiveForm] = useState<FormType>('query')
-  const [queryData, setQueryData] = useState<QueryFormData>({
-    name: '',
-    email: '',
-    subject: '',
-    message: ''
+  const [queryData, setQueryData] = useState<QueryFormData>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem(STORAGE_KEY_QUERY)
+      if (saved) {
+        try {
+          return JSON.parse(saved)
+        } catch {
+          return { name: '', email: '', subject: '', message: '' }
+        }
+      }
+    }
+    return { name: '', email: '', subject: '', message: '' }
   })
-  const [accessData, setAccessData] = useState<AccessFormData>({
-    name: '',
-    email: '',
-    company: '',
-    accessType: 'USER',
-    message: ''
+  const [accessData, setAccessData] = useState<AccessFormData>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem(STORAGE_KEY_ACCESS)
+      if (saved) {
+        try {
+          return JSON.parse(saved)
+        } catch {
+          return { name: '', email: '', company: '', accessType: 'USER', message: '' }
+        }
+      }
+    }
+    return { name: '', email: '', company: '', accessType: 'USER', message: '' }
   })
   const [loading, setLoading] = useState(false)
   const [success, setSuccess] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (success) {
+      const timer = setTimeout(() => setSuccess(null), 5000)
+      return () => clearTimeout(timer)
+    }
+  }, [success])
+
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEY_QUERY, JSON.stringify(queryData))
+  }, [queryData])
+
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEY_ACCESS, JSON.stringify(accessData))
+  }, [accessData])
 
   const handleQuerySubmit = async (e: React.FormEvent) => {
     e.preventDefault()

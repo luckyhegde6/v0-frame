@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { 
   ArrowLeft, Zap, Image as ImageIcon, Settings, 
   Database, HardDrive, Archive, Upload, RefreshCw, Users,
-  ChevronRight, Play
+  ChevronRight, Play, ScanFace, Box, UserCheck
 } from 'lucide-react'
 
 const TASK_TYPES = [
@@ -77,6 +77,27 @@ const TASK_TYPES = [
     icon: Users, 
     description: 'Sync user data with external authentication providers.',
     features: ['Auth0 sync', 'Firebase sync', 'Custom sources']
+  },
+  { 
+    value: 'DETECT_FACES', 
+    label: 'Detect Faces', 
+    icon: ScanFace, 
+    description: 'Detect faces in images and generate embeddings for face recognition.',
+    features: ['Face detection', 'Embeddings', 'Confidence threshold']
+  },
+  { 
+    value: 'DETECT_OBJECTS', 
+    label: 'Detect Objects', 
+    icon: Box, 
+    description: 'Detect objects in images using AI (persons, pets, products, venues).',
+    features: ['Object detection', 'Categories', 'Confidence threshold']
+  },
+  { 
+    value: 'GROUP_FACES', 
+    label: 'Group Faces', 
+    icon: UserCheck, 
+    description: 'Group similar faces together using embeddings.',
+    features: ['Face grouping', 'Similarity threshold', 'Auto-labeling']
   }
 ]
 

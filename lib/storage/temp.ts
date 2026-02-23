@@ -8,16 +8,26 @@ import { Readable } from 'stream';
 // Phase 1 Contract: Deterministic temp path
 // See: .ai/contracts/phase-1-ingestion.md §3
 
-const TEMP_DIR_NAME = 'ingest';
+const TEMP_DIR_NAME = 'tmp';
+
+// Get project root directory
+function getProjectRoot(): string {
+    // In production (Vercel), use /tmp
+    if (process.env.VERCEL || process.env.NODE_ENV === 'production') {
+        return '/tmp'
+    }
+    // For local development, use project root tmp folder
+    return path.resolve(process.cwd(), TEMP_DIR_NAME)
+}
 
 // Cross-platform temp directory resolution
 function getTempDir(): string {
     // On Vercel, /tmp is the only writable directory
-    if (process.env.VERCEL) {
-        return path.join('/tmp', TEMP_DIR_NAME);
+    if (process.env.VERCEL || process.env.NODE_ENV === 'production') {
+        return path.join('/tmp', 'ingest');
     }
-    // Local development fallback
-    return path.join(os.tmpdir(), 'v0-frame', TEMP_DIR_NAME);
+    // Local development: use project root tmp/ingest folder
+    return path.join(getProjectRoot(), 'ingest');
 }
 
 /**

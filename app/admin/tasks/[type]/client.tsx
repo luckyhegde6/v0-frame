@@ -7,7 +7,8 @@ import {
   ArrowLeft, Loader2, Zap, Image as ImageIcon, Settings, 
   Database, HardDrive, Archive, Upload, RefreshCw, Users,
   ChevronRight, Check, X, FolderOpen, Layers, Cloud, 
-  Monitor, FolderUp, FileImage, AlertCircle, ExternalLink
+  Monitor, FolderUp, FileImage, AlertCircle, ExternalLink,
+  ScanFace, Box, UserCheck
 } from 'lucide-react'
 import { handleApiError, showSuccess } from '@/lib/error-handler'
 
@@ -292,6 +293,60 @@ const TASK_CONFIGS: Record<string, {
         label: 'Preserve Folder Structure',
         type: 'toggle',
         default: false
+      }
+    ]
+  },
+  DETECT_FACES: {
+    label: 'Detect Faces',
+    icon: ScanFace,
+    description: 'Detect faces in images and generate embeddings for face recognition',
+    requiresSource: true,
+    requiresDestination: false,
+    sourceTypes: ['project', 'album', 'images'],
+    configOptions: [
+      {
+        name: 'minConfidence',
+        label: 'Min Confidence',
+        type: 'number',
+        default: 0.7,
+        min: 0.1,
+        max: 1.0
+      }
+    ]
+  },
+  DETECT_OBJECTS: {
+    label: 'Detect Objects',
+    icon: Box,
+    description: 'Detect objects in images using AI (persons, pets, products, venues)',
+    requiresSource: true,
+    requiresDestination: false,
+    sourceTypes: ['project', 'album', 'images'],
+    configOptions: [
+      {
+        name: 'minConfidence',
+        label: 'Min Confidence',
+        type: 'number',
+        default: 0.5,
+        min: 0.1,
+        max: 1.0
+      }
+    ]
+  },
+  GROUP_FACES: {
+    label: 'Group Faces',
+    icon: UserCheck,
+    description: 'Group similar faces together using embeddings',
+    requiresSource: true,
+    requiresDestination: false,
+    sourceTypes: ['album'],
+    configOptions: [
+      {
+        name: 'threshold',
+        label: 'Similarity Threshold',
+        type: 'number',
+        default: 0.8,
+        min: 0.5,
+        max: 1.0
       }
     ]
   }

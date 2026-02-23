@@ -1,6 +1,5 @@
 import fs from 'fs/promises'
 import path from 'path'
-import os from 'os'
 import sharp from 'sharp'
 import prisma from '@/lib/prisma'
 import { 
@@ -13,6 +12,14 @@ import {
 
 const SIZES = [128, 256, 512]
 
+// Get project root tmp folder
+function getProjectTmp(): string {
+  if (process.env.VERCEL || process.env.NODE_ENV === 'production') {
+    return '/tmp'
+  }
+  return path.resolve(process.cwd(), 'tmp')
+}
+
 export async function handleThumbnailGeneration(payload: any, jobId: string): Promise<void> {
   let { imageId, originalPath } = payload
 
@@ -21,9 +28,30 @@ export async function handleThumbnailGeneration(payload: any, jobId: string): Pr
 
   let localPath = originalPath
 
-  if (USE_SUPABASE_STORAGE && originalPath.includes('/')) {
-    const [bucket, ...pathParts] = originalPath.split('/')
-    const storagePath = pathParts.join('/')
+  if (USE_SUPABASE_STORAGE) {
+    // Handle both formats: full URL, bucket/path, or just path
+    let bucket: string
+    let storagePath: string
+    
+    if (originalPath.startsWith('http')) {
+      // Full URL - extract bucket and path
+      const urlMatch = originalPath.match(/object\/(?:public\/)?([^/]+)\/(.+)$/)
+      if (urlMatch) {
+        bucket = urlMatch[1]
+        storagePath = urlMatch[2]
+      } else {
+        throw new Error(`Failed to parse URL: ${originalPath}`)
+      }
+    } else if (originalPath.includes('/')) {
+      // bucket/path format
+      const [b, ...pathParts] = originalPath.split('/')
+      bucket = b
+      storagePath = pathParts.join('/')
+    } else {
+      // Just path - assume project-albums bucket (common case)
+      bucket = 'project-albums'
+      storagePath = originalPath
+    }
     
     console.log(`[Thumbnail Handler] Downloading from Supabase: ${bucket}/${storagePath}`)
     
@@ -45,9 +73,11 @@ export async function handleThumbnailGeneration(payload: any, jobId: string): Pr
     try {
       await fs.access(originalPath)
     } catch {
+      const projectTmp = getProjectTmp()
       const tempLocations = [
-        path.join(process.env.VERCEL ? '/tmp' : os.tmpdir(), 'ingest', path.basename(originalPath)),
-        path.join(process.env.VERCEL ? '/tmp' : os.tmpdir(), 'v0-frame', 'ingest', path.basename(originalPath)),
+        path.join(projectTmp, 'ingest', path.basename(originalPath)),
+        path.join(projectTmp, 'storage', 'projects', path.basename(originalPath)),
+        path.join(process.env.VERCEL ? '/tmp' : projectTmp, 'ingest', path.basename(originalPath)),
       ]
       
       for (const loc of tempLocations) {
@@ -93,8 +123,10 @@ export async function handleThumbnailGeneration(payload: any, jobId: string): Pr
         thumbnailPaths[size] = result.publicUrl || result.fullPath
         console.log(`[Thumbnail Handler] Uploaded ${size}px: ${result.publicUrl}`)
       } else {
+        const projectTmp = getProjectTmp()
         const localThumbDir = path.join(
-          process.env.STORAGE_DIR || '/tmp/storage', 
+          projectTmp, 
+          'storage', 
           'thumbnails', 
           imageId
         )

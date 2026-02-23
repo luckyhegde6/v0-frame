@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
 import path from 'path';
+import fs from 'fs/promises';
 import prisma from '@/lib/prisma';
 import { streamToTempStorage, cleanupTempFile } from '@/lib/storage/temp';
 import { extractBasicMetadata } from '@/lib/image/metadata';
@@ -99,6 +100,25 @@ export async function POST(request: NextRequest) {
     // 5. Create DB record
     // Contract §5: status must be INGESTED
     console.log('[Upload API] Creating DB record...');
+    
+    // Check for duplicate checksum - if exists, return existing image
+    const existingImage = await prisma.image.findUnique({
+      where: { checksum: metadata.checksum }
+    })
+    
+    if (existingImage) {
+      console.log('[Upload API] Duplicate checksum found, updating existing image:', existingImage.id)
+      // Clean up the temp file since we're using existing image
+      await fs.unlink(tempPath).catch(() => {})
+      
+      return NextResponse.json({
+        message: 'Image already exists',
+        imageId: existingImage.id,
+        storageType: existingImage.storageType,
+        duplicate: true
+      }, { status: 200 })
+    }
+    
     const image = await prisma.image.create({
       data: {
         id: imageId,

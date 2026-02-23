@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import { useEffect, useState } from 'react'
-import { ChevronRight, Home, Shield, Image, Upload, ArrowLeft, FolderOpen, Play, BookOpen, Settings, Loader2, Layers, Star, Share2, User, FileText, Users, HardDrive, ListChecks, HelpCircle, Info, Key } from 'lucide-react'
+import { ChevronRight, Home, Shield, Image, Upload, ArrowLeft, FolderOpen, Play, BookOpen, Settings, Loader2, Layers, Star, Share2, User, FileText, Users, HardDrive, ListChecks, HelpCircle, Info, Key, Grid3X3, Tags, ScanFace, Trash2 } from 'lucide-react'
 import { UserNav } from './user-nav'
 import { NotificationBell } from './notification-bell'
 import { cn } from '@/lib/utils'
@@ -210,6 +210,19 @@ export function Header() {
                       Upload
                     </Link>
                   )}
+                  {/* Trash for PRO users */}
+                  {(isPro || isClient) && (
+                    <Link
+                      href="/trash"
+                      className={cn(
+                        "flex items-center gap-2 text-sm font-medium transition-colors hover:text-primary",
+                        pathname === '/trash' ? "text-primary" : "text-muted-foreground"
+                      )}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                      Trash
+                    </Link>
+                  )}
                 </>
               )}
 
@@ -315,6 +328,46 @@ export function Header() {
                   >
                     <Key className="w-4 h-4" />
                     Password Resets
+                  </Link>
+                  <Link
+                    href="/admin/tiles"
+                    className={cn(
+                      "flex items-center gap-2 text-sm font-medium transition-colors hover:text-primary",
+                      pathname.startsWith('/admin/tiles') ? "text-primary" : "text-muted-foreground"
+                    )}
+                  >
+                    <Grid3X3 className="w-4 h-4" />
+                    Tiles
+                  </Link>
+                  <Link
+                    href="/admin/classifications"
+                    className={cn(
+                      "flex items-center gap-2 text-sm font-medium transition-colors hover:text-primary",
+                      pathname.startsWith('/admin/classifications') ? "text-primary" : "text-muted-foreground"
+                    )}
+                  >
+                    <Tags className="w-4 h-4" />
+                    Classifications
+                  </Link>
+                  <Link
+                    href="/admin/faces"
+                    className={cn(
+                      "flex items-center gap-2 text-sm font-medium transition-colors hover:text-primary",
+                      pathname.startsWith('/admin/faces') ? "text-primary" : "text-muted-foreground"
+                    )}
+                  >
+                    <ScanFace className="w-4 h-4" />
+                    Faces
+                  </Link>
+                  <Link
+                    href="/admin/trash"
+                    className={cn(
+                      "flex items-center gap-2 text-sm font-medium transition-colors hover:text-primary",
+                      pathname.startsWith('/admin/trash') ? "text-primary" : "text-muted-foreground"
+                    )}
+                  >
+                    <Trash2 className="w-4 h-4" />
+                    Trash
                   </Link>
                 </>
               )}

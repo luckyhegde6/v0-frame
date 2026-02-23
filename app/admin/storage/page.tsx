@@ -5,9 +5,9 @@ import Link from 'next/link'
 import { 
   HardDrive, Users, Images, FolderOpen, Database, 
   ArrowLeft, RefreshCw, Server, Clock, AlertCircle,
-  FileImage, Cloud, CheckCircle, Loader2
+  FileImage, Cloud, CheckCircle, Loader2, Trash2, X
 } from 'lucide-react'
-import { handleApiError } from '@/lib/error-handler'
+import { handleApiError, showSuccess } from '@/lib/error-handler'
 
 interface DirectoryStats {
   name: string
@@ -68,6 +68,13 @@ export default function StorageMonitorPage() {
   const [data, setData] = useState<StorageData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [cleaningUp, setCleaningUp] = useState(false)
+  const [cleanupModal, setCleanupModal] = useState<{
+    open: boolean
+    type: 'user' | 'project' | null
+    id: string | null
+    name: string | null
+  }>({ open: false, type: null, id: null, name: null })
 
   const fetchStorage = async () => {
     setLoading(true)
@@ -85,6 +92,38 @@ export default function StorageMonitorPage() {
     } finally {
       setLoading(false)
     }
+  }
+
+  const handleCleanup = async (type: 'user' | 'project', id: string, name: string, hardDelete: boolean = false) => {
+    setCleaningUp(true)
+    try {
+      const params = new URLSearchParams()
+      if (type === 'user') params.set('userId', id)
+      else params.set('projectId', id)
+      params.set('action', hardDelete ? 'hard-delete' : 'soft-delete')
+
+      const response = await fetch(`/api/admin/storage?${params}`, {
+        method: 'DELETE'
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || 'Cleanup failed')
+      }
+
+      const result = await response.json()
+      showSuccess(`${result.message}`)
+      setCleanupModal({ open: false, type: null, id: null, name: null })
+      fetchStorage()
+    } catch (err) {
+      handleApiError(err, 'StorageCleanup')
+    } finally {
+      setCleaningUp(false)
+    }
+  }
+
+  const openCleanupModal = (type: 'user' | 'project', id: string, name: string) => {
+    setCleanupModal({ open: true, type, id, name })
   }
 
   useEffect(() => {
@@ -385,6 +424,7 @@ export default function StorageMonitorPage() {
                   <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground">Images</th>
                   <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground">Storage</th>
                   <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground">% of Total</th>
+                  <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -408,11 +448,21 @@ export default function StorageMonitorPage() {
                     <td className="py-3 px-4 text-right text-sm text-muted-foreground">
                       {formatPercentage(item.sizeBytes, data.database.totalImageSize)}
                     </td>
+                    <td className="py-3 px-4 text-right">
+                      <button
+                        onClick={() => openCleanupModal('user', item.user.id, item.user.name || item.user.email || 'Unknown')}
+                        className="p-2 text-red-500 hover:bg-red-500/10 rounded-lg transition-colors"
+                        title="Clean user storage"
+                        disabled={cleaningUp}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </td>
                   </tr>
                 ))}
                 {data.byUser.length === 0 && (
                   <tr>
-                    <td colSpan={5} className="py-8 text-center text-muted-foreground">
+                    <td colSpan={6} className="py-8 text-center text-muted-foreground">
                       No users with uploaded images yet
                     </td>
                   </tr>
@@ -452,6 +502,72 @@ export default function StorageMonitorPage() {
           </div>
         </div>
       </main>
+
+      {/* Cleanup Modal */}
+      {cleanupModal.open && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-card border border-border rounded-xl p-6 max-w-md w-full mx-4">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold flex items-center gap-2">
+                <AlertCircle className="w-5 h-5 text-red-500" />
+                Confirm Storage Cleanup
+              </h3>
+              <button
+                onClick={() => setCleanupModal({ open: false, type: null, id: null, name: null })}
+                className="p-1 hover:bg-accent rounded"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            
+            <p className="text-muted-foreground mb-4">
+              Are you sure you want to clean storage for <strong>{cleanupModal.name}</strong>?
+            </p>
+            
+            <p className="text-sm text-muted-foreground mb-6">
+              This will remove all image files from storage. The database records will be soft-deleted and can be restored from trash.
+            </p>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => setCleanupModal({ open: false, type: null, id: null, name: null })}
+                className="flex-1 px-4 py-2 border border-border rounded-lg hover:bg-accent transition-colors"
+                disabled={cleaningUp}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => cleanupModal.id && cleanupModal.type && handleCleanup(cleanupModal.type, cleanupModal.id, cleanupModal.name!, false)}
+                className="flex-1 px-4 py-2 bg-yellow-500 text-black rounded-lg hover:bg-yellow-600 transition-colors flex items-center justify-center gap-2"
+                disabled={cleaningUp}
+              >
+                {cleaningUp ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <>
+                    <Trash2 className="w-4 h-4" />
+                    Soft Delete
+                  </>
+                )}
+              </button>
+              <button
+                onClick={() => cleanupModal.id && cleanupModal.type && handleCleanup(cleanupModal.type, cleanupModal.id, cleanupModal.name!, true)}
+                className="flex-1 px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors flex items-center justify-center gap-2"
+                disabled={cleaningUp}
+              >
+                {cleaningUp ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <>
+                    <X className="w-4 h-4" />
+                    Permanent
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

@@ -34,7 +34,7 @@ describe('/api/requests', () => {
 
   beforeEach(async () => {
     vi.clearAllMocks()
-    mockAuth = (await import('@/lib/auth/auth')).auth
+    mockAuth = vi.fn().mockResolvedValue(null)
     mockPrisma = (await import('@/lib/prisma')).default
   })
 
