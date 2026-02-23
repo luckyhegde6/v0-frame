@@ -5,7 +5,8 @@ import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { 
   ArrowLeft, Loader2, Upload, Image, Download, 
-  FileImage, Film, Video, Play, Package, Settings
+  FileImage, Film, Video, Play, Package, Settings,
+  Heart, X, ChevronLeft, ChevronRight, ZoomIn
 } from 'lucide-react'
 import { handleApiError, showSuccess } from '@/lib/error-handler'
 
@@ -32,6 +33,7 @@ interface AlbumImage {
   height: number
   mimeType: string
   originalPath: string | null
+  isFavorite?: boolean
 }
 
 export default function UserAlbumDetailPage() {
@@ -44,6 +46,11 @@ export default function UserAlbumDetailPage() {
   const [loading, setLoading] = useState(true)
   const [downloading, setDownloading] = useState(false)
   const [selectedImages, setSelectedImages] = useState<string[]>([])
+  
+  // Lightbox state
+  const [lightboxOpen, setLightboxOpen] = useState(false)
+  const [lightboxIndex, setLightboxIndex] = useState(0)
+  const [lightboxLoading, setLightboxLoading] = useState(true)
 
   useEffect(() => {
     if (albumId) {
@@ -77,6 +84,21 @@ export default function UserAlbumDetailPage() {
       console.error('Failed to fetch images:', error)
     } finally {
       setLoading(false)
+    }
+  }
+
+  const toggleFavorite = async (imageId: string, e?: React.MouseEvent) => {
+    e?.stopPropagation()
+    try {
+      const response = await fetch(`/api/images/${imageId}/favorite`, { method: 'POST' })
+      if (response.ok) {
+        const data = await response.json()
+        setImages(prev => prev.map(img => 
+          img.id === imageId ? { ...img, isFavorite: data.favorite } : img
+        ))
+      }
+    } catch (error) {
+      handleApiError(error, 'ToggleFavorite')
     }
   }
 
@@ -184,6 +206,35 @@ export default function UserAlbumDetailPage() {
     }
   }
 
+  // Lightbox functions
+  const openLightbox = (index: number) => {
+    setLightboxIndex(index)
+    setLightboxOpen(true)
+  }
+
+  const closeLightbox = () => {
+    setLightboxOpen(false)
+  }
+
+  const nextImage = () => {
+    setLightboxIndex(prev => (prev + 1) % images.length)
+  }
+
+  const prevImage = () => {
+    setLightboxIndex(prev => (prev - 1 + images.length) % images.length)
+  }
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (!lightboxOpen) return
+      if (e.key === 'Escape') closeLightbox()
+      if (e.key === 'ArrowRight') nextImage()
+      if (e.key === 'ArrowLeft') prevImage()
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [lightboxOpen])
+
   if (loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -197,6 +248,7 @@ export default function UserAlbumDetailPage() {
   const Icon = getCategoryIcon(album.category)
   const canDownload = album.settings?.downloadEnabled !== false
   const canBulkDownload = album.settings?.bulkDownloadEnabled !== false
+  const currentImage = images[lightboxIndex]
 
   return (
     <div className="min-h-screen bg-background">
@@ -277,25 +329,34 @@ export default function UserAlbumDetailPage() {
 
         {images.length > 0 ? (
           <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
-            {images.map((image) => (
+            {images.map((image, index) => (
               <div
                 key={image.id}
-                className={`relative aspect-square bg-muted rounded-lg overflow-hidden group ${
+                className={`relative aspect-square bg-muted rounded-lg overflow-hidden group cursor-pointer ${
                   canDownload ? 'cursor-pointer' : ''
                 } ${selectedImages.includes(image.id) ? 'ring-2 ring-primary' : ''}`}
-                onClick={() => canDownload && toggleImageSelection(image.id)}
+                onClick={() => openLightbox(index)}
               >
                 {canBulkDownload && (
-                  <div className="absolute top-2 left-2 z-10">
+                  <div className="absolute top-2 left-2 z-10" onClick={(e) => e.stopPropagation()}>
                     <input
                       type="checkbox"
                       checked={selectedImages.includes(image.id)}
                       onChange={() => toggleImageSelection(image.id)}
                       className="w-4 h-4 rounded border-border"
-                      onClick={(e) => e.stopPropagation()}
                     />
                   </div>
                 )}
+                
+                {/* Favorite button */}
+                <button
+                  onClick={(e) => toggleFavorite(image.id, e)}
+                  className="absolute top-2 right-2 z-10 p-1.5 bg-black/40 rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-black/60"
+                >
+                  <Heart 
+                    className={`w-4 h-4 ${image.isFavorite ? 'fill-red-500 text-red-500' : 'text-white'}`} 
+                  />
+                </button>
                 
                 {canDownload && (
                   <button
@@ -303,7 +364,7 @@ export default function UserAlbumDetailPage() {
                       e.stopPropagation()
                       handleDownloadImage(image.id, image.title || 'image.jpg')
                     }}
-                    className="absolute top-2 right-2 z-10 p-2 bg-black/50 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity"
+                    className="absolute top-10 right-2 z-10 p-1.5 bg-black/40 rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-black/60"
                   >
                     <Download className="w-4 h-4 text-white" />
                   </button>
@@ -313,7 +374,8 @@ export default function UserAlbumDetailPage() {
                   <img
                     src={image.previewPath || image.thumbnailPath || ''}
                     alt={image.title || 'Album image'}
-                    className="w-full h-full object-cover"
+                    className="w-full h-full object-cover transition-transform group-hover:scale-105"
+                    loading="lazy"
                   />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center">
@@ -334,6 +396,98 @@ export default function UserAlbumDetailPage() {
           </div>
         )}
       </main>
+
+      {/* Lightbox */}
+      {lightboxOpen && currentImage && (
+        <div 
+          className="fixed inset-0 z-50 bg-black/95 flex items-center justify-center"
+          onClick={closeLightbox}
+        >
+          {/* Close button */}
+          <button
+            onClick={closeLightbox}
+            className="absolute top-4 right-4 p-2 text-white/80 hover:text-white z-10"
+          >
+            <X className="w-8 h-8" />
+          </button>
+
+          {/* Navigation */}
+          {images.length > 1 && (
+            <>
+              <button
+                onClick={(e) => { e.stopPropagation(); prevImage() }}
+                className="absolute left-4 p-2 text-white/80 hover:text-white"
+              >
+                <ChevronLeft className="w-8 h-8" />
+              </button>
+              <button
+                onClick={(e) => { e.stopPropagation(); nextImage() }}
+                className="absolute right-4 p-2 text-white/80 hover:text-white"
+              >
+                <ChevronRight className="w-8 h-8" />
+              </button>
+            </>
+          )}
+
+          {/* Favorite button */}
+          <button
+            onClick={(e) => { 
+              e.stopPropagation(); 
+              toggleFavorite(currentImage.id);
+            }}
+            className="absolute top-4 left-4 p-2 text-white/80 hover:text-white z-10"
+          >
+            <Heart 
+              className={`w-6 h-6 ${currentImage.isFavorite ? 'fill-red-500 text-red-500' : ''}`} 
+            />
+          </button>
+
+          {/* Download button */}
+          {canDownload && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                handleDownloadImage(currentImage.id, currentImage.title || 'image.jpg')
+              }}
+              className="absolute top-4 left-16 p-2 text-white/80 hover:text-white z-10"
+            >
+              <Download className="w-6 h-6" />
+            </button>
+          )}
+
+          {/* Image counter */}
+          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 text-white/80 text-sm">
+            {lightboxIndex + 1} / {images.length}
+          </div>
+
+          {/* Main image */}
+          <div 
+            className="max-w-[90vw] max-h-[85vh] flex items-center justify-center"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {currentImage.previewPath || currentImage.thumbnailPath ? (
+              <img
+                src={currentImage.previewPath || currentImage.thumbnailPath || ''}
+                alt={currentImage.title || 'Album image'}
+                className="max-w-full max-h-[85vh] object-contain"
+                onLoad={() => setLightboxLoading(false)}
+              />
+            ) : (
+              <div className="w-64 h-64 flex items-center justify-center">
+                <Loader2 className="w-8 h-8 animate-spin text-white" />
+              </div>
+            )}
+          </div>
+
+          {/* Image info */}
+          {currentImage.title && (
+            <div className="absolute bottom-12 left-1/2 -translate-x-1/2 text-white text-center">
+              <p className="text-lg font-medium">{currentImage.title}</p>
+              <p className="text-white/60 text-sm">{currentImage.width} × {currentImage.height}</p>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   )
 }

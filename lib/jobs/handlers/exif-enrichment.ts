@@ -2,9 +2,12 @@
 // Extracts detailed metadata from images using sharp and exif-reader
 
 import fs from 'fs/promises';
+import path from 'path';
+import os from 'os';
 import sharp from 'sharp';
 import exifReader from 'exif-reader';
 import prisma from '@/lib/prisma';
+import { retrieveFile, USE_SUPABASE_STORAGE } from '@/lib/storage';
 
 interface ExifData {
     gps?: {
@@ -36,18 +39,65 @@ export async function handleExifEnrichment(payload: any, jobId: string): Promise
     const { imageId, originalPath } = payload;
 
     console.log(`[EXIF Handler] Processing image: ${imageId}`);
+    console.log(`[EXIF Handler] Using Supabase Storage: ${USE_SUPABASE_STORAGE}`);
+
+    let localPath = originalPath;
 
     try {
-        // 1. Read image metadata using sharp
-        const imageBuffer = await fs.readFile(originalPath);
+        // 1. Get the file - download from Supabase if needed
+        if (USE_SUPABASE_STORAGE) {
+            // Handle both formats: full URL, bucket/path, or just path
+            let bucket: string
+            let storagePath: string
+            
+            if (originalPath.startsWith('http')) {
+              // Full URL - extract bucket and path
+              const urlMatch = originalPath.match(/object\/(?:public\/)?([^/]+)\/(.+)$/)
+              if (urlMatch) {
+                bucket = urlMatch[1]
+                storagePath = urlMatch[2]
+              } else {
+                throw new Error(`Failed to parse URL: ${originalPath}`)
+              }
+            } else if (originalPath.includes('/')) {
+              // bucket/path format
+              const [b, ...pathParts] = originalPath.split('/')
+              bucket = b
+              storagePath = pathParts.join('/')
+            } else {
+              // Just path - assume project-albums bucket (common case)
+              bucket = 'project-albums'
+              storagePath = originalPath
+            }
+
+            console.log(`[EXIF Handler] Downloading from Supabase: ${bucket}/${storagePath}`);
+
+            try {
+                localPath = await retrieveFile({
+                    bucket: bucket as any,
+                    path: storagePath,
+                });
+                console.log(`[EXIF Handler] Downloaded to: ${localPath}`);
+            } catch (error) {
+                console.error(`[EXIF Handler] Failed to download:`, error);
+                throw error;
+            }
+        }
+
+        // 2. Read image metadata using sharp
+        const imageBuffer = await fs.readFile(localPath);
         const metadata = await sharp(imageBuffer).metadata();
 
         if (!metadata.exif) {
             console.log(`[EXIF Handler] No EXIF data found for image: ${imageId}`);
+            // Clean up temp file if downloaded from Supabase
+            if (USE_SUPABASE_STORAGE && originalPath.includes('/')) {
+                await fs.unlink(localPath).catch(() => {});
+            }
             return;
         }
 
-        // 2. Parse EXIF data
+        // 3. Parse EXIF data
         const exif = exifReader(metadata.exif) as ExifData;
 
         // GPS Conversion (DMS to Decimal)
@@ -59,7 +109,7 @@ export async function handleExifEnrichment(payload: any, jobId: string): Promise
         const lat = exif.gps?.GPSLatitude ? getDecimal(exif.gps.GPSLatitude) * (exif.gps.GPSLatitudeRef === 'S' ? -1 : 1) : null;
         const lng = exif.gps?.GPSLongitude ? getDecimal(exif.gps.GPSLongitude) * (exif.gps.GPSLongitudeRef === 'W' ? -1 : 1) : null;
 
-        // 3. Update database with enriched metadata
+        // 4. Update database with enriched metadata
         await prisma.image.update({
             where: { id: imageId },
             data: {
@@ -83,5 +133,12 @@ export async function handleExifEnrichment(payload: any, jobId: string): Promise
     } catch (error: any) {
         console.error(`[EXIF Handler] Error processing image ${imageId}:`, error.message);
         throw error; // Rethrow for job runner to handle retries
+    } finally {
+        // Clean up temp file if downloaded from Supabase
+        if (USE_SUPABASE_STORAGE && originalPath.includes('/') && localPath) {
+            try {
+                await fs.unlink(localPath).catch(() => {});
+            } catch {}
+        }
     }
 }

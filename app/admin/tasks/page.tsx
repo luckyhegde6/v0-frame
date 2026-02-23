@@ -26,7 +26,10 @@ import {
   AlertCircle,
   Settings,
   UserPlus,
-  Link as LinkIcon
+  Link as LinkIcon,
+  ScanFace,
+  Box,
+  UserCheck
 } from 'lucide-react'
 import Link from 'next/link'
 import { handleApiError, showSuccess } from '@/lib/error-handler'
@@ -61,7 +64,10 @@ const TASK_TYPES = [
   { value: 'BACKUP_DATABASE', label: 'Backup Database', icon: Database, description: 'Create database backup', hasConfigPage: true },
   { value: 'CLEANUP_TEMP', label: 'Cleanup Temp', icon: Trash, description: 'Clean up temporary files', hasConfigPage: true },
   { value: 'OPTIMIZE_STORAGE', label: 'Optimize Storage', icon: HardDrive, description: 'Optimize storage allocation', hasConfigPage: true },
-  { value: 'SYNC_USERS', label: 'Sync Users', icon: Users, description: 'Sync user data with external sources', hasConfigPage: true }
+  { value: 'SYNC_USERS', label: 'Sync Users', icon: Users, description: 'Sync user data with external sources', hasConfigPage: true },
+  { value: 'DETECT_FACES', label: 'Detect Faces', icon: ScanFace, description: 'Detect faces in images', hasConfigPage: true },
+  { value: 'DETECT_OBJECTS', label: 'Detect Objects', icon: Box, description: 'Detect objects in images', hasConfigPage: true },
+  { value: 'GROUP_FACES', label: 'Group Faces', icon: UserCheck, description: 'Group similar faces together', hasConfigPage: true }
 ]
 
 const PRIORITIES = [

@@ -6,6 +6,9 @@ import { handleOffloadOriginal } from './offload-original';
 import { handleThumbnailGeneration } from './thumbnail-generation';
 import { handlePreviewGeneration } from './preview-generation';
 import { handleExifEnrichment } from './exif-enrichment';
+import { handleFaceDetection } from './face-detection';
+import { handleObjectDetection } from './object-detection';
+import { handleFaceGrouping } from './face-grouping';
 
 /**
  * Initialize all job handlers
@@ -18,8 +21,19 @@ export function initializeJobHandlers() {
   registerJobHandler('THUMBNAIL_GENERATION', handleThumbnailGeneration);
   registerJobHandler('PREVIEW_GENERATION', handlePreviewGeneration);
   registerJobHandler('EXIF_ENRICHMENT', handleExifEnrichment);
+  registerJobHandler('FACE_DETECTION', handleFaceDetection);
+  registerJobHandler('OBJECT_DETECTION', handleObjectDetection);
+  registerJobHandler('FACE_GROUPING', handleFaceGrouping);
 
   console.log('[Job Handlers] All handlers registered');
 }
 
-export { handleOffloadOriginal, handleThumbnailGeneration, handlePreviewGeneration, handleExifEnrichment };
+export { 
+  handleOffloadOriginal, 
+  handleThumbnailGeneration, 
+  handlePreviewGeneration, 
+  handleExifEnrichment,
+  handleFaceDetection,
+  handleObjectDetection,
+  handleFaceGrouping
+};

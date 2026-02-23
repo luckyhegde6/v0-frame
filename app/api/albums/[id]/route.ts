@@ -33,7 +33,9 @@ export async function GET(
           select: { id: true, name: true }
         },
         _count: {
-          select: { images: true }
+          select: { images: {
+            where: { deletedAt: null }  // Only count non-deleted images
+          }}
         }
       }
     })

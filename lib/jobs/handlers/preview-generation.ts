@@ -1,6 +1,5 @@
 import fs from 'fs/promises'
 import path from 'path'
-import os from 'os'
 import sharp from 'sharp'
 import prisma from '@/lib/prisma'
 import { 
@@ -10,6 +9,14 @@ import {
   BUCKETS 
 } from '@/lib/storage'
 
+// Get project root tmp folder
+function getProjectTmp(): string {
+  if (process.env.VERCEL || process.env.NODE_ENV === 'production') {
+    return '/tmp'
+  }
+  return path.resolve(process.cwd(), 'tmp')
+}
+
 export async function handlePreviewGeneration(payload: any, jobId: string): Promise<void> {
   const { imageId, originalPath } = payload
 
@@ -18,9 +25,30 @@ export async function handlePreviewGeneration(payload: any, jobId: string): Prom
 
   let localPath = originalPath
 
-  if (USE_SUPABASE_STORAGE && originalPath.includes('/')) {
-    const [bucket, ...pathParts] = originalPath.split('/')
-    const storagePath = pathParts.join('/')
+  if (USE_SUPABASE_STORAGE) {
+    // Handle both formats: full URL, bucket/path, or just path
+    let bucket: string
+    let storagePath: string
+    
+    if (originalPath.startsWith('http')) {
+      // Full URL - extract bucket and path
+      const urlMatch = originalPath.match(/object\/(?:public\/)?([^/]+)\/(.+)$/)
+      if (urlMatch) {
+        bucket = urlMatch[1]
+        storagePath = urlMatch[2]
+      } else {
+        throw new Error(`Failed to parse URL: ${originalPath}`)
+      }
+    } else if (originalPath.includes('/')) {
+      // bucket/path format
+      const [b, ...pathParts] = originalPath.split('/')
+      bucket = b
+      storagePath = pathParts.join('/')
+    } else {
+      // Just path - assume project-albums bucket (common case)
+      bucket = 'project-albums'
+      storagePath = originalPath
+    }
     
     console.log(`[Preview Handler] Downloading from Supabase: ${bucket}/${storagePath}`)
     
@@ -71,8 +99,10 @@ export async function handlePreviewGeneration(payload: any, jobId: string): Prom
       finalPath = result.publicUrl || result.fullPath
       console.log(`[Preview Handler] Uploaded to: ${result.publicUrl}`)
     } else {
+      const projectTmp = getProjectTmp()
       const previewDir = path.join(
-        process.env.STORAGE_DIR || '/tmp/storage', 
+        projectTmp, 
+        'storage', 
         'processed', 
         imageId
       )

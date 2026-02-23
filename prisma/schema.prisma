@@ -74,12 +74,18 @@ model Image {
   createdAt DateTime    @default(now())
   updatedAt DateTime    @updatedAt
   
+  // Soft delete for trash/restore
+  deletedAt DateTime?  // When image was soft-deleted
+  deletedFrom String?  // Where it was deleted from: 'album:{albumId}' or 'gallery'
+  originalAlbumId String? // Original album ID for restore
+
   @@index([status])
   @@index([checksum])
   @@index([userId])
   @@index([storageType])
   @@index([albumId])
   @@index([createdAt])
+  @@index([deletedAt])
 }
 
 model Collection {
@@ -772,6 +778,9 @@ enum TaskType {
   SYNC_STORAGE
   GENERATE_THUMBNAILS
   REGENERATE_METADATA
+  DETECT_FACES
+  DETECT_OBJECTS
+  GROUP_FACES
   
   // System operations  
   BACKUP_DATABASE
@@ -994,4 +1003,42 @@ model UserFavorite {
   @@unique([userId, imageId])
   @@index([userId])
   @@index([imageId])
+}
+
+// Tile model for dashboard customization
+model Tile {
+  id        String   @id @default(cuid())
+  name      String
+  type      String   @default("grid") // grid, list, chart, stats
+  position  Int      @default(0)
+  size      String   @default("medium") // small, medium, large, full
+  config    Json?
+  isActive  Boolean  @default(true)
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@index([isActive])
+  @@index([position])
+}
+
+// Classification model for image categorization
+model Classification {
+  id          String   @id @default(cuid())
+  name        String
+  category    String   @default("general") // general, object, scene, people, event, location
+  description String?
+  color       String   @default("#00D9FF")
+  icon        String?
+  parentId    String?
+  parent      Classification? @relation("ClassificationHierarchy", fields: [parentId], references: [id], onDelete: SetNull)
+  children    Classification[] @relation("ClassificationHierarchy")
+  isActive    Boolean  @default(true)
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@index([category])
+  @@index([isActive])
+  @@index([parentId])
 }
