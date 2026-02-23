@@ -12,12 +12,14 @@ if (!connectionString) {
 // Detect if connecting to a local database
 const isLocal = connectionString.includes('localhost') || connectionString.includes('127.0.0.1') || process.env.ENVIRONMENT === 'local'
 
-// Ensure explicit SSL mode to avoid pg-connection-string deprecation warning
-// Only force SSL for remote connections
-if (!isLocal && !connectionString.includes('sslmode=')) {
+// Ensure explicit SSL mode and libpq compatibility to avoid deprecation warnings
+// Only for remote connections
+if (!isLocal) {
   const separator = connectionString.includes('?') ? '&' : '?'
   // uselibpqcompat=true ensures compatibility with future pg versions and suppresses warnings
-  connectionString += `${separator}sslmode=require&uselibpqcompat=true`
+  if (!connectionString.includes('uselibpqcompat=')) {
+    connectionString += `${separator}uselibpqcompat=true`
+  }
 }
 
 // Configure pool with SSL options for self-signed certificates
