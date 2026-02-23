@@ -13,6 +13,16 @@ function getStorageDir(): string {
 
 const STORAGE_DIR = getStorageDir()
 
+// Validate that a resolved path is within the expected base directory
+function validatePath(baseDir: string, ...segments: string[]): string {
+  const resolvedPath = path.resolve(baseDir, ...segments)
+  const resolvedBase = path.resolve(baseDir)
+  if (!resolvedPath.startsWith(resolvedBase)) {
+    throw new Error('Invalid path: Path traversal detected')
+  }
+  return resolvedPath
+}
+
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -22,6 +32,24 @@ export async function GET(
     const searchParams = request.nextUrl.searchParams
     const type = searchParams.get('type') || 'thumbnail'
     const size = searchParams.get('size') || '512'
+
+    // Validate imageId to prevent path traversal
+    const UUID_REGEX = /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i
+    if (!UUID_REGEX.test(imageId)) {
+      return NextResponse.json({ error: 'Invalid image ID' }, { status: 400 })
+    }
+
+    // Validate size parameter
+    const validSizes = ['128', '256', '512']
+    if (!validSizes.includes(size)) {
+      return NextResponse.json({ error: 'Invalid size parameter' }, { status: 400 })
+    }
+
+    // Validate type parameter
+    const validTypes = ['thumbnail', 'preview', 'original']
+    if (!validTypes.includes(type)) {
+      return NextResponse.json({ error: 'Invalid type parameter' }, { status: 400 })
+    }
 
     const session = await auth()
     const isAuthenticated = !!session?.user
@@ -106,10 +134,10 @@ export async function GET(
     // Fallback to local file system
     switch (type) {
       case 'thumbnail':
-        filePath = path.join(STORAGE_DIR, 'thumbnails', imageId, `thumb-${size}.jpg`)
+        filePath = validatePath(STORAGE_DIR, 'thumbnails', imageId, `thumb-${size}.jpg`)
         break
       case 'preview':
-        filePath = path.join(STORAGE_DIR, 'processed', imageId, 'preview.jpg')
+        filePath = validatePath(STORAGE_DIR, 'processed', imageId, 'preview.jpg')
         break
       case 'original':
         filePath = image.tempPath || ''
@@ -125,7 +153,7 @@ export async function GET(
       // Try fallback paths for unprocessed or missing files
       if (type === 'preview') {
         // Try processed folder with different naming
-        const altPreviewPath = path.join(STORAGE_DIR, 'processed', imageId, 'preview.jpg')
+        const altPreviewPath = validatePath(STORAGE_DIR, 'processed', imageId, 'preview.jpg')
         try {
           await fs.access(altPreviewPath)
           filePath = altPreviewPath
@@ -134,7 +162,7 @@ export async function GET(
           const projectTmp = process.env.VERCEL || process.env.NODE_ENV === 'production'
             ? '/tmp'
             : path.resolve(process.cwd(), 'tmp')
-          const tempPath = path.join(projectTmp, 'ingest', `${imageId}.jpg`)
+          const tempPath = validatePath(projectTmp, 'ingest', `${imageId}.jpg`)
           try {
             await fs.access(tempPath)
             filePath = tempPath
@@ -147,7 +175,7 @@ export async function GET(
         const projectTmp = process.env.VERCEL || process.env.NODE_ENV === 'production'
           ? '/tmp'
           : path.resolve(process.cwd(), 'tmp')
-        const tempPath = path.join(projectTmp, 'ingest', `${imageId}.jpg`)
+        const tempPath = validatePath(projectTmp, 'ingest', `${imageId}.jpg`)
         try {
           await fs.access(tempPath)
           filePath = tempPath

@@ -1,12 +1,12 @@
 import { Pool } from 'pg'
 
-process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0'
-
 const PROD_URL = 'postgres://postgres.viuvufbhcscavvdfoqqn:L9UuoUJdBiNmhUhl@aws-1-ap-south-1.pooler.supabase.com:5432/postgres?sslmode=require'
 
 const pool = new Pool({ 
   connectionString: PROD_URL,
-  ssl: true
+  ssl: {
+    rejectUnauthorized: process.env.SKIP_SSL_VERIFICATION !== 'true'
+  }
 })
 
 const enumAdditions = [
