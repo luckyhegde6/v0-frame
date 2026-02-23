@@ -1,6 +1,9 @@
 import { Pool } from 'pg'
 
-const PROD_URL = 'postgres://postgres.viuvufbhcscavvdfoqqn:L9UuoUJdBiNmhUhl@aws-1-ap-south-1.pooler.supabase.com:5432/postgres?sslmode=require'
+const PROD_URL = process.env.POSTGRES_PRISMA_URL
+if (!PROD_URL) {
+  throw new Error('POSTGRES_PRISMA_URL environment variable is not set')
+}
 
 const pool = new Pool({ 
   connectionString: PROD_URL,
