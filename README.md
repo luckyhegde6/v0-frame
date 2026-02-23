@@ -98,16 +98,6 @@ A persistent job runner loop executes within the Next.js runtime, picking up tas
 - **API Documentation**: Full Swagger docs with Bearer/Cookie auth
 - **Bearer Token**: Generate API tokens for programmatic access
 
-### Authentication Demo
-
-Visit `/auth/signin` to test the authentication system:
-
-**Demo Accounts:**
-- `admin@frame.app` / admin123 (Full admin access)
-- `user@frame.app` / user123 (Standard user)
-- `pro@frame.app` / pro123 (Professional user)
-- `client@frame.app` / client123 (Client access)
-
 ---
 
 ## Roadmap
@@ -183,11 +173,10 @@ See [.ai/README.md](./.ai/README.md) for more details.
 - **Signin**: http://localhost:3000/auth/signin
 
 ### Demo Accounts
-- admin@frame.app / admin123 (SUPERADMIN - full access)
 - admin2@frame.app / admin123 (ADMIN - admin panel)
-- user@frame.app / user123 (USER - basic gallery)
-- pro@frame.app / pro123 (PRO - projects, albums, profile)
-- client@frame.app / client123 (CLIENT - shared projects)
+- user1@frame.app / user123 (USER - basic gallery)
+- pro1@frame.app / pro123 (PRO - projects, albums, profile)
+- client1@frame.app / client123 (CLIENT - shared projects)
 
 ### Public Features
 - **Password Reset**: Click "Forgot Password?" on signin page

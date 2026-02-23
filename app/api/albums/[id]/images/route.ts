@@ -31,16 +31,17 @@ export async function GET(
       return NextResponse.json({ error: 'Album not found' }, { status: 404 })
     }
 
-    // Query images directly owned by album (storageType = ALBUM)
+    // Query images directly owned by album (storageType = ALBUM), exclude soft-deleted
     const ownedImages = await prisma.image.findMany({
       where: { 
         albumId,
-        storageType: 'ALBUM'
+        storageType: 'ALBUM',
+        deletedAt: null
       },
       orderBy: { createdAt: 'desc' }
     })
 
-    // Also query images linked via AlbumImage junction table (for copied images)
+    // Also query images linked via AlbumImage junction table (for copied images), exclude soft-deleted
     const linkedImages = await prisma.albumImage.findMany({
       where: { albumId },
       include: {
@@ -49,26 +50,66 @@ export async function GET(
       orderBy: { addedAt: 'desc' }
     })
 
+    // Filter out soft-deleted images in JavaScript (Prisma doesn't support where in include)
+    const validLinkedImages = linkedImages
+      .filter(ai => ai.image && ai.image.deletedAt === null)
+      .map(ai => ai.image)
+
     // Combine both sets, avoiding duplicates (owned images take precedence)
     const linkedImageIds = new Set(ownedImages.map(img => img.id))
     const allImages = [
       ...ownedImages,
-      ...linkedImages.filter(ai => !linkedImageIds.has(ai.imageId)).map(ai => ai.image)
+      ...validLinkedImages.filter(img => !linkedImageIds.has(img.id))
     ]
 
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
     
+    // Helper to get thumbnail URL - returns direct Supabase URL if available, otherwise uses API
+    const getThumbnailUrl = (img: typeof allImages[0]) => {
+      if (img.thumbnailPath) {
+        // If it's already a URL (Supabase), return it directly
+        if (img.thumbnailPath.startsWith('http')) {
+          return img.thumbnailPath
+        }
+        // Otherwise, use API endpoint for local storage
+        return `${baseUrl}/api/images/${img.id}/file?type=thumbnail&size=512`
+      }
+      return null
+    }
+
+    // Helper to get preview URL - returns direct Supabase URL if available, otherwise uses API
+    const getPreviewUrl = (img: typeof allImages[0]) => {
+      if (img.previewPath) {
+        if (img.previewPath.startsWith('http')) {
+          return img.previewPath
+        }
+        return `${baseUrl}/api/images/${img.id}/file?type=preview`
+      }
+      return null
+    }
+    
+    // Get user's favorites for these images
+    const imageIds = allImages.map(img => img.id)
+    const favorites = await prisma.userFavorite.findMany({
+      where: {
+        userId: session.user.id,
+        imageId: { in: imageIds }
+      }
+    })
+    const favoriteSet = new Set(favorites.map(f => f.imageId))
+    
     const albumImages = allImages.map(img => ({
       id: img.id,
       title: img.title,
-      thumbnailPath: img.thumbnailPath ? `${baseUrl}/api/images/${img.id}/file?type=thumbnail&size=512` : null,
-      previewPath: img.previewPath ? `${baseUrl}/api/images/${img.id}/file?type=preview` : null,
+      thumbnailPath: getThumbnailUrl(img),
+      previewPath: getPreviewUrl(img),
       width: img.width,
       height: img.height,
       mimeType: img.mimeType,
       sizeBytes: img.sizeBytes,
       createdAt: img.createdAt.toISOString(),
-      addedAt: img.createdAt.toISOString()
+      addedAt: img.createdAt.toISOString(),
+      isFavorite: favoriteSet.has(img.id)
     }))
 
     return NextResponse.json({ images: albumImages })
@@ -255,19 +296,25 @@ export async function DELETE(
       return NextResponse.json({ error: 'Image IDs required' }, { status: 400 })
     }
 
-    // For ALBUM type images, delete the images directly
-    // They are owned by the album, not by a user's gallery
-    await prisma.image.deleteMany({
+    // Soft-delete images instead of permanent delete
+    // Store original album info for restore capability
+    await prisma.image.updateMany({
       where: {
         id: { in: imageIds },
         albumId,
         storageType: 'ALBUM'
+      },
+      data: {
+        deletedAt: new Date(),
+        deletedFrom: `album:${albumId}`,
+        originalAlbumId: albumId,
+        albumId: null // Remove from album but keep reference for restore
       }
     })
 
     await logAlbumImageRemoved(albumId, imageIds, session.user.id, { albumName: album.name })
 
-    return NextResponse.json({ success: true, removedCount: imageIds.length })
+    return NextResponse.json({ success: true, removedCount: imageIds.length, softDeleted: true })
   } catch (error) {
     console.error('[AlbumImagesRemoveAPI] Failed to remove images:', error)
     return NextResponse.json(

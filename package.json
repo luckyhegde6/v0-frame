@@ -16,6 +16,8 @@
     "db:generate": "prisma generate",
     "db:seed": "prisma db seed",
     "db:studio": "prisma studio",
+    "db:sync:prod": "npx prisma db push --url=$POSTGRES_PRISMA_URL --accept-data-loss",
+    "db:sync:prod:safe": "npx tsx scripts/sync-prod.ts",
     "docker:clean": "docker-compose down -v --remove-orphans",
     "local": "pnpm docker:up && pnpm db:push && pnpm db:seed && pnpm dev",
     "db:ensure-admin": "npx tsx --env-file=.env scripts/ensure-superadmin.ts",

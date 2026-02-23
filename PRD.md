@@ -340,9 +340,9 @@ See [Security Considerations](./.ai/docs/security-considerations.md) for detaile
 |-------|----------|------|-------------|
 | admin@frame.app | admin123 | SUPERADMIN | Full system access |
 | admin2@frame.app | admin123 | ADMIN | Admin panel access |
-| user@frame.app | user123 | USER | Basic gallery access |
-| pro@frame.app | pro123 | PRO | Project/Album management |
-| client@frame.app | client123 | CLIENT | Shared project access |
+| user1@frame.app | user123 | USER | Basic gallery access |
+| pro1@frame.app | pro123 | PRO | Project/Album management |
+| client1@frame.app | client123 | CLIENT | Shared project access |
 
 ---
 

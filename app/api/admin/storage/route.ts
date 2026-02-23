@@ -6,9 +6,94 @@ import fs from 'fs'
 import path from 'path'
 import os from 'os'
 import { supabaseAdmin, BUCKETS, isStorageConfigured } from '@/lib/storage/supabase'
+import { getStorageInfo } from '@/lib/storage'
 
-const STORAGE_DIR = process.env.STORAGE_DIR || 
-  (process.env.VERCEL ? '/tmp/storage' : path.join(os.tmpdir(), 'v0-frame', 'storage'))
+function getStorageDir(): string {
+  return getStorageInfo().baseDir
+}
+
+const STORAGE_DIR = getStorageDir()
+
+function formatBytes(bytes: number): string {
+  if (bytes === 0) return '0 B'
+  const k = 1024
+  const sizes = ['B', 'KB', 'MB', 'GB', 'TB']
+  const i = Math.floor(Math.log(bytes) / Math.log(k))
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
+}
+
+async function deleteFromSupabase(bucket: string, filePath: string): Promise<boolean> {
+  if (!supabaseAdmin) return false
+  
+  try {
+    const { error } = await supabaseAdmin.storage
+      .from(bucket)
+      .remove([filePath])
+    
+    if (error) {
+      console.error(`[StorageCleanup] Error deleting ${filePath} from ${bucket}:`, error)
+      return false
+    }
+    return true
+  } catch (error) {
+    console.error(`[StorageCleanup] Exception deleting ${filePath}:`, error)
+    return false
+  }
+}
+
+async function deleteImageStorage(image: {
+  id: string
+  userId: string
+  tempPath: string | null
+  thumbnailPath: string | null
+  previewPath: string | null
+  storageType: string
+}): Promise<{ deletedFiles: number; freedBytes: number }> {
+  let deletedFiles = 0
+  let freedBytes = 0
+
+  if (isStorageConfigured() && supabaseAdmin) {
+    const paths = [
+      { path: image.tempPath, bucket: image.storageType === 'GALLERY' ? BUCKETS.USER_GALLERY : BUCKETS.PROJECT_ALBUMS },
+      { path: image.thumbnailPath, bucket: BUCKETS.THUMBNAILS },
+      { path: image.previewPath, bucket: BUCKETS.PROCESSED },
+    ]
+
+    for (const { path: filePath, bucket } of paths) {
+      if (filePath) {
+        const success = await deleteFromSupabase(bucket, filePath)
+        if (success) deletedFiles++
+      }
+    }
+  } else {
+    const storageInfo = getStorageInfo()
+    const storageBase = storageInfo.baseDir
+
+    const paths = [
+      image.tempPath,
+      image.thumbnailPath,
+      image.previewPath,
+    ]
+
+    for (const filePath of paths) {
+      if (filePath) {
+        const fullPath = path.join(storageBase, filePath)
+        if (fs.existsSync(fullPath)) {
+          try {
+            const stat = fs.statSync(fullPath)
+            freedBytes += stat.size
+            fs.unlinkSync(fullPath)
+            deletedFiles++
+          } catch (err) {
+            console.error(`[StorageCleanup] Error deleting local file ${fullPath}:`, err)
+          }
+        }
+      }
+    }
+  }
+
+  return { deletedFiles, freedBytes }
+}
 
 interface DirectoryStats {
   name: string
@@ -22,14 +107,6 @@ interface BucketStats {
   name: string
   size: number
   fileCount: number
-}
-
-function formatBytes(bytes: number): string {
-  if (bytes === 0) return '0 B'
-  const k = 1024
-  const sizes = ['B', 'KB', 'MB', 'GB', 'TB']
-  const i = Math.floor(Math.log(bytes) / Math.log(k))
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
 }
 
 function getDirectoryStats(dirPath: string): DirectoryStats {
@@ -226,12 +303,12 @@ export async function GET(request: NextRequest) {
     
     try {
       const storageByType = await prisma.image.groupBy({
-        by: ['storageType' as never],
+        by: ['storageType'],
         _sum: { sizeBytes: true },
         _count: { id: true }
       })
       
-      byType = (storageByType as Array<{ storageType: string; _sum: { sizeBytes: number | null }; _count: { id: number } }>).map(t => ({
+      byType = storageByType.map(t => ({
         type: t.storageType,
         sizeBytes: t._sum.sizeBytes || 0,
         sizeFormatted: formatBytes(t._sum.sizeBytes || 0),
@@ -291,6 +368,142 @@ export async function GET(request: NextRequest) {
     console.error('[StorageAPI] Error:', error)
     return NextResponse.json(
       { error: 'Failed to get storage stats', details: error instanceof Error ? error.message : 'Unknown error' },
+      { status: 500 }
+    )
+  }
+}
+
+export async function DELETE(request: NextRequest) {
+  try {
+    const session = await auth()
+    
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    if (!isAdmin(session.user.role)) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
+
+    const { searchParams } = new URL(request.url)
+    const userId = searchParams.get('userId')
+    const projectId = searchParams.get('projectId')
+    const imageIds = searchParams.get('imageIds')
+    const action = searchParams.get('action') || 'soft-delete'
+
+    const hardDelete = action === 'hard-delete'
+
+    if (!userId && !projectId && !imageIds) {
+      return NextResponse.json(
+        { error: 'Must specify userId, projectId, or imageIds' },
+        { status: 400 }
+      )
+    }
+
+    let imagesToDelete: Array<{
+      id: string
+      userId: string
+      tempPath: string | null
+      thumbnailPath: string | null
+      previewPath: string | null
+      storageType: string
+      sizeBytes: number | null
+    }> = []
+
+    if (imageIds) {
+      const ids = imageIds.split(',')
+      imagesToDelete = await prisma.image.findMany({
+        where: { id: { in: ids } },
+        select: {
+          id: true,
+          userId: true,
+          tempPath: true,
+          thumbnailPath: true,
+          previewPath: true,
+          storageType: true,
+          sizeBytes: true
+        }
+      })
+    } else if (userId) {
+      imagesToDelete = await prisma.image.findMany({
+        where: { userId },
+        select: {
+          id: true,
+          userId: true,
+          tempPath: true,
+          thumbnailPath: true,
+          previewPath: true,
+          storageType: true,
+          sizeBytes: true
+        }
+      })
+    } else if (projectId) {
+      const albumIds = await prisma.album.findMany({
+        where: { projectId },
+        select: { id: true }
+      }).then(albums => albums.map(a => a.id))
+
+      imagesToDelete = await prisma.image.findMany({
+        where: { albumId: { in: albumIds } },
+        select: {
+          id: true,
+          userId: true,
+          tempPath: true,
+          thumbnailPath: true,
+          previewPath: true,
+          storageType: true,
+          sizeBytes: true
+        }
+      })
+    }
+
+    if (imagesToDelete.length === 0) {
+      return NextResponse.json({
+        success: true,
+        message: 'No images found to delete',
+        deleted: 0,
+        freedBytes: 0
+      })
+    }
+
+    let deletedFromDb = 0
+    let deletedFiles = 0
+    let freedBytes = 0
+
+    for (const image of imagesToDelete) {
+      const result = await deleteImageStorage(image)
+      deletedFiles += result.deletedFiles
+      freedBytes += result.freedBytes
+
+      if (hardDelete) {
+        await prisma.image.delete({ where: { id: image.id } })
+        deletedFromDb++
+      } else {
+        await prisma.image.update({
+          where: { id: image.id },
+          data: { 
+            deletedAt: new Date(),
+            deletedFrom: 'ADMIN_STORAGE_CLEANUP'
+          }
+        })
+        deletedFromDb++
+      }
+    }
+
+    return NextResponse.json({
+      success: true,
+      message: hardDelete 
+        ? `Permanently deleted ${deletedFromDb} images and ${deletedFiles} storage files`
+        : `Soft-deleted ${deletedFromDb} images and removed ${deletedFiles} storage files`,
+      deleted: deletedFromDb,
+      deletedFiles,
+      freedBytes,
+      freedBytesFormatted: formatBytes(freedBytes)
+    })
+  } catch (error) {
+    console.error('[StorageCleanup] Error:', error)
+    return NextResponse.json(
+      { error: 'Failed to cleanup storage', details: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
     )
   }

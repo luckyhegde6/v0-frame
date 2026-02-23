@@ -154,7 +154,7 @@ function SignInForm() {
 
         <div className="mt-6 text-center text-sm text-muted-foreground">
           <p>Demo Accounts:</p>
-          <p className="mt-1">admin@frame.app / admin123</p>
+          <p className="mt-1">admin2@frame.app / admin123</p>
           <p>user@frame.app / user123</p>
         </div>
       </div>

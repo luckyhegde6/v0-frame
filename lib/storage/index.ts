@@ -22,12 +22,33 @@ export interface StorageConfig {
   isCloud: boolean
 }
 
-export const USE_SUPABASE_STORAGE = isStorageConfigured()
+// Check for local development mode
+// Use local storage when:
+// - DB_ENVIRONMENT=local (explicit local mode)
+// - USE_LOCAL_STORAGE=true (force local storage)
+// - Not configured for production deployment
+const isLocalEnvironment = process.env.DB_ENVIRONMENT === 'local' || process.env.USE_LOCAL_STORAGE === 'true'
+const isProductionDeployment = process.env.VERCEL || process.env.NODE_ENV === 'production'
+
+// Force local storage for local development or when explicitly set
+const shouldUseLocalStorage = isLocalEnvironment || !isProductionDeployment
+
+// Only use Supabase if configured AND not in local environment
+export const USE_SUPABASE_STORAGE = isStorageConfigured() && !shouldUseLocalStorage
+
+// Get project root for local development
+function getProjectRoot(): string {
+    if (process.env.VERCEL || process.env.NODE_ENV === 'production') {
+        return '/tmp'
+    }
+    return path.resolve(process.cwd())
+}
 
 const DEFAULT_STORAGE_DIR = process.env.STORAGE_DIR || 
-  (process.env.VERCEL ? '/tmp/storage' : path.join(os.tmpdir(), 'v0-frame', 'storage'))
+  (process.env.VERCEL ? '/tmp/storage' : path.join(getProjectRoot(), 'tmp', 'storage'))
 
-const STORAGE_BACKEND = process.env.STORAGE_BACKEND || (USE_SUPABASE_STORAGE ? 'supabase' : 'local')
+const STORAGE_BACKEND = process.env.STORAGE_BACKEND || 
+  (USE_SUPABASE_STORAGE && !shouldUseLocalStorage ? 'supabase' : 'local')
 
 export const storageConfig: StorageConfig = {
   type: STORAGE_BACKEND as StorageType,
@@ -67,7 +88,10 @@ export function getStorageInfo() {
     structure: storageStructure,
     platform: process.platform,
     isVercel: !!process.env.VERCEL,
-    useSupabase: USE_SUPABASE_STORAGE
+    useSupabase: USE_SUPABASE_STORAGE,
+    isLocalEnvironment,
+    shouldUseLocalStorage,
+    isProductionDeployment
   }
 }
 
@@ -174,7 +198,10 @@ export async function retrieveFile(
       throw new Error(`Failed to download from Supabase: ${result.error}`)
     }
 
-    const tempPath = path.join(os.tmpdir(), 'v0-frame-cache', storage.path)
+    const cacheDir = process.env.VERCEL || process.env.NODE_ENV === 'production' 
+      ? '/tmp/v0-frame-cache' 
+      : path.join(getProjectRoot(), 'tmp', 'v0-frame-cache')
+    const tempPath = path.join(cacheDir, storage.path)
     await fs.mkdir(path.dirname(tempPath), { recursive: true })
     await fs.writeFile(tempPath, Buffer.from(await result.data.arrayBuffer()))
     return tempPath
